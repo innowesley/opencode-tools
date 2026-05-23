@@ -33,9 +33,9 @@ EOF
   cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
 5. Only THEN proceed with the user's request.
 
@@ -244,10 +244,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Call `write-plan` with:
-   - `name` — short kebab-case name (e.g., `add-auth-flow`)
-   - `content` — full plan in markdown
-   - `status: "pending"` — for active plans
+3. **Write plan** — Say "Writing plan..." briefly, then call `write-plan` to save. Do NOT echo the raw plan markdown in your response. After saving, present a clean human-readable summary with proper headings and formatting.
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
@@ -288,9 +285,9 @@ EOF
   cat > "$dir/AGENTS.md" << 'EOF'
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
 5. Only THEN proceed with the user's request.
 
@@ -417,9 +414,9 @@ EOF
   cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
 5. Only THEN proceed with the user's request.
 
@@ -483,10 +480,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Call `write-plan` with:
-   - `name` — short kebab-case name (e.g., `add-auth-flow`)
-   - `content` — full plan in markdown
-   - `status: "pending"` — for active plans
+3. **Write plan** — Say "Writing plan..." briefly, then call `write-plan` to save. Do NOT echo the raw plan markdown in your response. After saving, present a clean human-readable summary with proper headings and formatting.
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
@@ -527,9 +521,9 @@ EOF
   cat > "$dir/AGENTS.md" << 'EOF'
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
 5. Only THEN proceed with the user's request.
 
