@@ -1,50 +1,77 @@
-# planit — Plan-first workflow for OpenCode
+# opencode-tools — AI workflow tools for OpenCode
 
-Install once, use in every OpenCode project.
+A collection of tools that make OpenCode smarter about planning and documentation.
 
-## Copy-paste into OpenCode
+- **planit** — Plan-first workflow: analyze, plan, implement, archive
+- **doc-it** — AI-native documentation enforcement: auto-update docs on every change
+
+---
+
+## Quick start
+
+### 1. Install planit (plan-first workflow)
+
+Tell the agent:
 
 ```
-Install this https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh
+Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh
 ```
 
-The agent will curl and run it automatically. No manual steps.
-
-**Or run it yourself:**
+Or run it yourself:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash
 ```
 
-## Install into a project too
+### 2. (Optional) Add doc-it for documentation enforcement
+
+Tell the agent:
+
+```
+Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh
+```
+
+Or run it yourself:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash -s -- install ./my-project
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash
+```
+
+---
+
+## planit — Plan-first workflow
+
+Plan once, use in every OpenCode project. Forces OpenCode to plan before building.
+
+### Install into a specific project
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- install ./my-project
 ```
 
 Or tell the agent: *"Install planit into this project from the URL."*
 
-## Uninstall
+### Minimal install (no extras)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash -s -- uninstall
-```
-
-## Minimal install (without extras)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash -s -- minimal
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- minimal
 ```
 
 Skips optional extras: `list-plans`, `stale-plans` tools and `/pending` command.
 
-## Check status
+### Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash -s -- status
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- uninstall
 ```
 
-## How it works
+### Check status
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- status
+```
+
+### What it installs
 
 | Component | Location | What it does |
 |-----------|----------|-------------|
@@ -56,41 +83,45 @@ curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-plan
 | Plan prompt | `~/.config/opencode/opencode.json` | Tells Plan mode to use `write-plan` + `question` tool |
 | Instructions | `~/.config/opencode/AGENTS.md` | Global fallback instructions with startup check |
 
-## Workflow
+### Workflow
 
 1. OpenCode starts — if you have pending plans, it greets you with a count and checks for stale/abandoned plans
 2. Stale plans are flagged: old, context shifted, or may be done. Continue, archive, or review with `/pending`
 3. Type `/pending` anytime to see what's waiting — pick a number to continue, or `archive <number>` to move an outdated plan to `completed/`
-3. Give OpenCode a task
-4. Plan mode analyzes, asks clarifying questions, writes plan to `.agents/plans/pending/`
-5. Plan mode asks: **Implement?** (press Tab for Build) / **Edit?** / **Cancel?**
-6. Build mode implements, archives plan to `.agents/plans/completed/`
+4. Give OpenCode a task
+5. Plan mode analyzes, asks clarifying questions, writes plan to `.agents/plans/pending/`
+6. Plan mode asks: **Implement?** (press Tab for Build) / **Edit?** / **Cancel?**
+7. Build mode implements, archives plan to `.agents/plans/completed/`
 
 ---
 
-# doc-it — AI-Native Documentation Enforcement
+## doc-it — AI-native documentation enforcement
 
 Prevents AI doc rot and drift. Every execute task auto-updates docs.
 
-## Copy-paste
+> **Note:** doc-it is opt-in. Global install just puts the tools in place. You must run `install ./my-project` to activate the documentation pipeline in a project.
 
-```
-Install this https://raw.githubusercontent.com/innowesley/planit/main/install-doc-it.sh
-```
-
-## Install
+### Initialize a project
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-doc-it.sh | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- install ./my-project
 ```
 
-## Initialize a project
+Or tell the agent: *"Install doc-it into this project from the URL."*
+
+### Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-doc-it.sh | bash -s -- install ./my-project
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- uninstall
 ```
 
-## What it installs
+### Check status
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- status
+```
+
+### What it installs
 
 | Component | Location | What it does |
 |-----------|----------|-------------|
@@ -102,8 +133,54 @@ curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-doc-
 | docs/ | project root | Full docs tree (ai-context, architecture, features, database, api, contracts, future, etc.) |
 | .ai/ | project root | Agent rules: execute pipeline, doc-rules, architecture-rules, testing-rules, completion-checklist |
 
-## Execute Pipeline
+### Execute pipeline
 
-Every build task follows: LOAD CONTEXT → ANALYZE → CHECK DOCS → IMPLEMENT → UPDATE DOCS → CHANGELOG → TRACEABILITY → AI CONTEXT → CHECK VIOLATIONS → COMPLETE.
+Every build task follows: **LOAD CONTEXT** → **ANALYZE** → **CHECK DOCS** → **IMPLEMENT** → **UPDATE DOCS** → **CHANGELOG** → **TRACEABILITY** → **AI CONTEXT** → **CHECK VIOLATIONS** → **COMPLETE**.
 
 Tasks **FAIL** if any doc step is skipped.
+
+---
+
+## Combined workflow
+
+```
+                    ┌──────────────┐
+                    │  OpenCode    │
+                    │   starts     │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │ Check for    │
+                    │ pending/stale│ ←── planit
+                    │ plans        │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │ User gives   │
+                    │ a task       │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │ Plan mode:   │
+                    │ analyze, ask,│ ←── planit
+                    │ write plan   │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+                    │ Build mode:  │
+                    │ implement,   │
+                    │ update docs, │ ←── planit + doc-it
+                    │ changelog,   │
+                    │ archive plan │
+                    └──────────────┘
+```
+
+## Development
+
+The repo lives at `github.com/innowesley/opencode-tools`. Clone it:
+
+```bash
+git clone git@github.com:innowesley/opencode-tools.git
+```
+
+Edit the install scripts or this README, then push. Users always install from the `main` branch via raw.githubusercontent.com.
