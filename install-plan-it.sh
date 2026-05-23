@@ -244,7 +244,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. After saving, use `read` on the `.md` file to display it (rendered with colors). Do NOT echo the plan content in your own response text.
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. Do NOT use `read` to display the plan (shows ugly line numbers). Instead, present the plan directly in your response using clean markdown formatting — headings, bold, lists — which renders with colors in the chat.
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
@@ -480,7 +480,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. After saving, use `read` on the `.md` file to display it (rendered with colors). Do NOT echo the plan content in your own response text.
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. Do NOT use `read` to display the plan (shows ugly line numbers). Instead, present the plan directly in your response using clean markdown formatting — headings, bold, lists — which renders with colors in the chat.
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
