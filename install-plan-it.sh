@@ -23,7 +23,6 @@ install_global() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
@@ -274,7 +273,6 @@ install_project() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
@@ -402,7 +400,6 @@ install_global_minimal() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
@@ -508,7 +505,6 @@ install_project_minimal() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
-    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
