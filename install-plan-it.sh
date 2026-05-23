@@ -31,6 +31,11 @@ install_global() {
 EOF
 
   cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
+# CRITICAL RULE: Always use the `question` tool
+Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+
+---
+
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
 1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
@@ -237,6 +242,9 @@ name: plan-flow
 description: Plan-first workflow — create plans using write-plan tool, archive via edit+mv on completion
 ---
 
+## Critical rule
+Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+
 ## Plan-First Workflow
 
 Always create a written plan before making code changes.
@@ -291,6 +299,11 @@ install_project() {
 EOF
 
   cat > "$dir/AGENTS.md" << 'EOF'
+# CRITICAL RULE: Always use the `question` tool
+Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+
+---
+
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
 1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
@@ -420,6 +433,11 @@ install_global_minimal() {
 EOF
 
   cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
+# CRITICAL RULE: Always use the `question` tool
+Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+
+---
+
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
 1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
@@ -481,6 +499,9 @@ name: plan-flow
 description: Plan-first workflow — create plans using write-plan tool, archive via edit+mv on completion
 ---
 
+## Critical rule
+Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+
 ## Plan-First Workflow
 
 Always create a written plan before making code changes.
@@ -535,6 +556,11 @@ install_project_minimal() {
 EOF
 
   cat > "$dir/AGENTS.md" << 'EOF'
+# CRITICAL RULE: Always use the `question` tool
+Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+
+---
+
 # CRITICAL STARTUP RULE
 On EVERY new session, BEFORE responding to the user's first message:
 1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
