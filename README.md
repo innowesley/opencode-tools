@@ -115,7 +115,7 @@ Prevents AI doc rot and drift. Every execute task auto-updates docs.
 Tell the agent:
 
 ```
-Install doc-it into this project from the URL.
+Install doc-it into this project from the URL curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- install .
 ```
 
 Or run it yourself:
