@@ -37,7 +37,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
 
 ---
 
@@ -244,7 +244,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. Do NOT echo the plan content in your response — OpenCode's native plan viewer renders it with colors. Just confirm it was saved and mention the filename.
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. After saving, output the plan directly in your response using clean markdown — headings, bold, lists, code blocks. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
@@ -297,7 +297,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
 
 ---
 
@@ -426,7 +426,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
 
 ---
 
@@ -488,7 +488,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. Do NOT echo the plan content in your response — OpenCode's native plan viewer renders it with colors. Just confirm it was saved and mention the filename.
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. After saving, output the plan directly in your response using clean markdown — headings, bold, lists, code blocks. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
@@ -541,7 +541,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
 
 ---
 
