@@ -1,201 +1,128 @@
-# opencode-tools — AI workflow tools for OpenCode
+# opencode-tools
 
-A collection of tools that make OpenCode smarter about planning and documentation.
+AI workflow tools for OpenCode.
 
-- **plan-it** — Plan-first workflow: analyze, plan, implement, archive
-- **doc-it** — AI-native documentation enforcement: auto-update docs on every change
-
----
-
-## Quick start
-
-### 1. Install plan-it (plan-first workflow)
-
-Tell the agent:
-
-```
-Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh
-```
-
-Or run it yourself:
+**plan-it** — plan-first development.
+**doc-it** — self-maintaining docs.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash
-```
-
-### 2. (Optional) Add doc-it for documentation enforcement
-
-Tell the agent:
-
-```
-Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh
-```
-
-Or run it yourself:
-
-```bash
 curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash
 ```
 
 ---
 
-## plan-it — Plan-first workflow
+## Why?
 
-Plan once, use in every OpenCode project. Forces OpenCode to plan before building.
+AI coding tools lose context over time. Plans disappear. Docs drift. Architecture gets forgotten.
 
-### Install into a specific project
-
-Tell the agent:
-
-```
-Install plan-it into this project from the URL.
-```
-
-Or run it yourself:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- install ./my-project
-```
-
-### Minimal install (no extras)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- minimal
-```
-
-Skips optional extras: `list-plans`, `stale-plans` tools and `/pending` command.
-
-### Uninstall
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- uninstall
-```
-
-### Check status
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- status
-```
-
-### What it installs
-
-| Component | Location | What it does |
-|-----------|----------|-------------|
-| `bash cat <<'EOF' > file` (new plans) | Plan mode workflow | Saves plans via heredoc — avoids tool-argument display in the main messages panel |
-| `write-plan` tool | `~/.config/opencode/tools/` | Archives completed plans with timestamp. Not used for new plans (see above). |
-| `list-plans` tool | `~/.config/opencode/tools/` | Agent can list pending/completed plans programmatically |
-| `stale-plans` tool | `~/.config/opencode/tools/` | Detects old, abandoned, or context-shifted plans |
-| `/pending` command | `~/.config/opencode/commands/` | Type `/pending` to see, continue, or archive plans |
-| `plan-flow` skill | `~/.config/opencode/skills/` | Instructions for plan format and workflow |
-| Plan prompt | `~/.config/opencode/opencode.json` | Tells Plan mode to use bash heredoc to save plans + `question` tool for clarifications |
-| Instructions | `~/.config/opencode/AGENTS.md` | Global fallback instructions with startup check |
-
-> **Why bash heredoc?** OpenCode's TUI displays tool arguments inline. Passing the full plan content as a `write-plan` tool argument cluttered the main messages panel with raw structured text. Using `bash cat << 'EOF' > file` keeps the plan cleanly in the chat as formatted markdown while the file write happens silently via shell heredoc.
-
-### Workflow
-
-1. OpenCode starts — if you have pending plans, it greets you with a count and checks for stale/abandoned plans
-2. Stale plans are flagged: old, context shifted, or may be done. Continue, archive, or review with `/pending`
-3. Type `/pending` anytime to see what's waiting — pick a number to continue, or `archive <number>` to move an outdated plan to `completed/`
-4. Give OpenCode a task
-5. Plan mode analyzes, asks clarifying questions, outputs the plan as formatted markdown in the main messages panel, then saves it via `bash cat << 'EOF' > .agents/plans/pending/name.md`
-6. Plan mode asks: **Implement?** (press Tab for Build) / **Edit?** / **Cancel?**
-7. Build mode implements, archives plan to `.agents/plans/completed/`
+opencode-tools fixes this:
+- **plan-it** forces planning before execution, tracks tasks, recovers stale plans
+- **doc-it** keeps project documentation synchronized automatically
 
 ---
 
-## doc-it — AI-native documentation enforcement
+## Choose your workflow
 
-Prevents AI doc rot and drift. Every execute task auto-updates docs.
+### plan-it
+Use for plan-first development with task tracking and pending plan recovery.
 
-> **Note:** doc-it is opt-in. Global install just puts the tools in place. You must run `install ./my-project` to activate the documentation pipeline in a project.
-
-### Initialize a project
-
+```
 Tell the agent:
 
-```
-Install doc-it into this project from the URL curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- install .
-```
+  Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh
 
-Or run it yourself:
+Or run:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- install ./my-project
+  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash
 ```
 
-### Uninstall
+Into a specific project:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- uninstall
+```
+  curl -fsSL ...install-plan-it.sh | bash -s -- install ./my-project
 ```
 
-### Check status
+### doc-it
+Use for self-maintaining docs, AI project memory, and automatic changelogs.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash -s -- status
+```
+Tell the agent:
+
+  Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh
+
+Or run:
+
+  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash
 ```
 
-### What it installs
+Initialize a project with the full pipeline:
 
-| Component | Location | What it does |
-|-----------|----------|-------------|
-| `doc-drift-checker` | `.opencode/tools/` | Detects stale/missing docs from changed source |
-| `changelog-generator` | `.opencode/tools/` | Creates changelog entries in docs/changelogs/ |
-| `traceability-generator` | `.opencode/tools/` | Builds feature→files→routes→tables→tests→docs map |
-| `ai-context-generator` | `.opencode/tools/` | Regenerates current-system-state.md + project-summary.md |
-| `rule-violation-checker` | `.opencode/tools/` | Detects direct DB writes, undocumented routes, contract violations |
-| docs/ | project root | Full docs tree (ai-context, architecture, features, database, api, contracts, future, etc.) |
-| .ai/ | project root | Agent rules: execute pipeline, doc-rules, architecture-rules, testing-rules, completion-checklist |
+```
+  curl -fsSL ...install-doc-it.sh | bash -s -- install ./my-project
+```
 
-### Execute pipeline
+### Both (recommended for larger AI-native projects)
+Install plan-it globally, then run doc-it's project init in your working directory. Both tools work together — plan-it manages the task lifecycle, doc-it keeps docs fresh.
 
-Every build task follows: **LOAD CONTEXT** → **ANALYZE** → **CHECK DOCS** → **IMPLEMENT** → **UPDATE DOCS** → **CHANGELOG** → **TRACEABILITY** → **AI CONTEXT** → **CHECK VIOLATIONS** → **COMPLETE**.
+---
 
-Tasks **FAIL** if any doc step is skipped.
+## Example
+
+**User:** "Add Stripe refunds"
+
+**plan-it:**
+- analyzes the task
+- writes an implementation plan
+- asks for confirmation
+
+**doc-it:**
+- updates payment docs
+- creates a changelog
+- refreshes AI project memory
+- updates the traceability map
+
+---
+
+## After install
+
+**plan-it:**
+- OpenCode starts checking for pending plans automatically
+- Plan mode saves tasks and recovers stale ones
+
+**doc-it:**
+- `docs/` tree is created in your project
+- Build mode updates docs and changelogs automatically
 
 ---
 
 ## Combined workflow
 
 ```
-                    ┌──────────────┐
-                    │  OpenCode    │
-                    │   starts     │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ Check for    │
-                    │ pending/stale│ ←── plan-it
-                    │ plans        │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ User gives   │
-                    │ a task       │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ Plan mode:   │
-                    │ analyze, ask,│ ←── plan-it
-                    │ write plan   │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ Build mode:  │
-                    │ implement,   │
-                    │ update docs, │ ←── plan-it + doc-it
-                    │ changelog,   │
-                    │ archive plan │
-                    └──────────────┘
+Task
+ ↓
+Plan (plan-it)
+ ↓
+Implement
+ ↓
+Docs update automatically (doc-it)
+ ↓
+Project memory stays current
 ```
 
-## Development
+---
 
-The repo lives at `github.com/innowesley/opencode-tools`. Clone it:
+## Deep reference
+
+- [docs/plan-it.md](docs/plan-it.md) — components, workflow, commands, why bash heredoc
+- [docs/doc-it.md](docs/doc-it.md) — components, pipeline, getting started
+
+---
+
+## Development
 
 ```bash
 git clone git@github.com:innowesley/opencode-tools.git
 ```
 
-Edit the install scripts or this README, then push. Users always install from the `main` branch via raw.githubusercontent.com.
+Edit the install scripts or docs, then push. Users install from `main`.
