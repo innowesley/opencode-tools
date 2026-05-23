@@ -94,14 +94,14 @@ export default tool({
     try {
       files = await readdir(dir)
     } catch {
-      return { count: 0, plans: [] }
+      return JSON.stringify({ count: 0, plans: [] })
     }
 
     const plans = files
       .filter(f => f.endsWith(".md"))
       .map(f => f.replace(/\.md$/, ""))
 
-    return { count: plans.length, plans }
+    return JSON.stringify({ count: plans.length, plans })
   },
 })
 EOF
@@ -111,7 +111,21 @@ EOF
 description: List all pending plans in .agents/plans/pending/
 ---
 
-List all `.md` files in `.agents/plans/pending/`. For each file, show the filename and the first heading (the `# Title` line). If there are no pending plans, say "No pending plans." If there are multiple, ask the user which one they want to continue.
+List all `.md` files in `.agents/plans/pending/`. For each file, show the filename and the first heading (the `# Title` line). Present them numbered.
+
+If there are no pending plans, say "No pending plans." and stop.
+
+If there are any, ask:
+- "Type the **number** to continue working on a plan"
+- "Or type `archive <number>` to move that plan to `.agents/plans/completed/` as outdated/superseded"
+
+If the user picks a number, proceed with that plan.
+
+If the user says `archive <number>`:
+1. Read the full content of that plan's `.md` file
+2. Prepend `**Archived as outdated/superseded**` to the content
+3. Call `write-plan` with `name` (filename without .md), `content` (modified content), and `status: "completed"`
+4. Confirm the plan was archived
 EOF
 
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'

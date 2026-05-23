@@ -50,7 +50,7 @@ curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-plan
 |-----------|----------|-------------|
 | `write-plan` tool | `~/.config/opencode/tools/` | Saves plans to `.agents/plans/pending/`, archives to `completed/` with timestamp |
 | `list-plans` tool | `~/.config/opencode/tools/` | Agent can list pending/completed plans programmatically |
-| `/pending` command | `~/.config/opencode/commands/` | Type `/pending` to see all pending plans |
+| `/pending` command | `~/.config/opencode/commands/` | Type `/pending` to see, continue, or archive plans |
 | `plan-flow` skill | `~/.config/opencode/skills/` | Instructions for plan format and workflow |
 | Plan prompt | `~/.config/opencode/opencode.json` | Tells Plan mode to use `write-plan` + `question` tool |
 | Instructions | `~/.config/opencode/AGENTS.md` | Global fallback instructions with startup check |
@@ -58,7 +58,7 @@ curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-plan
 ## Workflow
 
 1. OpenCode starts — if you have pending plans, it greets you with a count
-2. Type `/pending` anytime to see what's waiting
+2. Type `/pending` anytime to see what's waiting — pick a number to continue, or `archive <number>` to move an outdated plan to `completed/`
 3. Give OpenCode a task
 4. Plan mode analyzes, asks clarifying questions, writes plan to `.agents/plans/pending/`
 5. Plan mode asks: **Implement?** (press Tab for Build) / **Edit?** / **Cancel?**
