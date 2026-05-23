@@ -24,7 +24,13 @@ install_global() {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
+      "permission": {
+        "edit": {
+          "*": "deny",
+          ".agents/plans/**/*.md": "allow"
+        }
+      },
+      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
@@ -51,7 +57,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 CRITICAL: Always plan before implementing.
 
 ### Plan mode
-- Use the `write-plan` tool to save plans to `.agents/plans/pending/`
+- Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans to `.agents/plans/pending/`
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
@@ -61,6 +67,11 @@ CRITICAL: Always plan before implementing.
 EOF
 
   cat > "$CONFIG_DIR/tools/write-plan.ts" << 'EOF'
+// ╔══════════════════════════════════════════════════╗
+// ║  DEPRECATED — Use native `write` instead.       ║
+// ║  This tool is kept for backwards compatibility   ║
+// ║  only. New installs use `mkdir -p` + `write`.   ║
+// ╚══════════════════════════════════════════════════╝
 import { mkdir, unlink } from "node:fs/promises"
 import { tool } from "@opencode-ai/plugin"
 
@@ -239,7 +250,7 @@ EOF
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
 ---
 name: plan-flow
-description: Plan-first workflow — create plans using write-plan tool, archive via edit+mv on completion
+description: Plan-first workflow — create plans using `mkdir -p` + `write`, archive via `edit`+`mv` on completion
 ---
 
 ## Critical rule
@@ -252,16 +263,16 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+3. **Write plan** — Say "Writing plan..." then run `bash mkdir -p .agents/plans/pending/` to ensure the directory exists. Use `write` to save the plan to `.agents/plans/pending/<name>.md`. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
-5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`). Do NOT rewrite the whole plan with `write-plan`.
+5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`).
 6. **Archiving** — When implementation is done:
    1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
    2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
 
 ### Display behavior (OpenCode TUI panels)
 - **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
-- **File viewer (sidebar)** — `write-plan` saves the file here automatically. Shows raw file content.
+- **File viewer (sidebar)** — `write` saves the file here. Shows raw file content.
 - **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
 
 ### Plan format
@@ -272,13 +283,13 @@ Each plan must include:
 - **Risks**: Potential issues or edge cases
 - **Implementation steps**: Ordered list of concrete steps
 
-### Tool guidance — write-plan vs native tools
+### Tool guidance — native tools vs deprecated write-plan
 | Tool | Use for | Why |
 |------|---------|-----|
-| `write-plan` | **New plans** only | Auto-creates `.agents/plans/pending/` directory |
+| `bash mkdir -p` then `write` | **New plans** | `mkdir -p` ensures dir exists; `write` saves the file |
 | `edit` | **Editing** existing plan `.md` files | Direct file edit, no full rewrite |
 | `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
-| Native `write` | ❌ Avoid for plan files | Fails if `pending/` dir doesn't exist |
+| `write-plan` | ❌ Deprecated | Use `mkdir -p` + `write` instead |
 EOF
 
   msg "Global install complete → $CONFIG_DIR"
@@ -297,7 +308,13 @@ install_project() {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
+      "permission": {
+        "edit": {
+          "*": "deny",
+          ".agents/plans/**/*.md": "allow"
+        }
+      },
+      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
@@ -324,7 +341,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 CRITICAL: Always plan before implementing.
 
 ### Plan mode
-- Use the `write-plan` tool to save plans to `.agents/plans/pending/`
+- Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans to `.agents/plans/pending/`
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
@@ -431,7 +448,13 @@ install_global_minimal() {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
+      "permission": {
+        "edit": {
+          "*": "deny",
+          ".agents/plans/**/*.md": "allow"
+        }
+      },
+      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
@@ -458,7 +481,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 CRITICAL: Always plan before implementing.
 
 ### Plan mode
-- Use the `write-plan` tool to save plans to `.agents/plans/pending/`
+- Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans to `.agents/plans/pending/`
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
@@ -468,6 +491,11 @@ CRITICAL: Always plan before implementing.
 EOF
 
   cat > "$CONFIG_DIR/tools/write-plan.ts" << 'EOF'
+// ╔══════════════════════════════════════════════════╗
+// ║  DEPRECATED — Use native `write` instead.       ║
+// ║  This tool is kept for backwards compatibility   ║
+// ║  only. New installs use `mkdir -p` + `write`.   ║
+// ╚══════════════════════════════════════════════════╝
 import { mkdir, unlink } from "node:fs/promises"
 import { tool } from "@opencode-ai/plugin"
 
@@ -501,7 +529,7 @@ EOF
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
 ---
 name: plan-flow
-description: Plan-first workflow — create plans using write-plan tool, archive via edit+mv on completion
+description: Plan-first workflow — create plans using `mkdir -p` + `write`, archive via `edit`+`mv` on completion
 ---
 
 ## Critical rule
@@ -514,16 +542,16 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+3. **Write plan** — Say "Writing plan..." then run `bash mkdir -p .agents/plans/pending/` to ensure the directory exists. Use `write` to save the plan to `.agents/plans/pending/<name>.md`. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
-5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`). Do NOT rewrite the whole plan with `write-plan`.
+5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`).
 6. **Archiving** — When implementation is done:
    1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
    2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
 
 ### Display behavior (OpenCode TUI panels)
 - **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
-- **File viewer (sidebar)** — `write-plan` saves the file here automatically. Shows raw file content.
+- **File viewer (sidebar)** — `write` saves the file here. Shows raw file content.
 - **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
 
 ### Plan format
@@ -534,13 +562,13 @@ Each plan must include:
 - **Risks**: Potential issues or edge cases
 - **Implementation steps**: Ordered list of concrete steps
 
-### Tool guidance — write-plan vs native tools
+### Tool guidance — native tools vs deprecated write-plan
 | Tool | Use for | Why |
 |------|---------|-----|
-| `write-plan` | **New plans** only | Auto-creates `.agents/plans/pending/` directory |
+| `bash mkdir -p` then `write` | **New plans** | `mkdir -p` ensures dir exists; `write` saves the file |
 | `edit` | **Editing** existing plan `.md` files | Direct file edit, no full rewrite |
 | `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
-| Native `write` | ❌ Avoid for plan files | Fails if `pending/` dir doesn't exist |
+| `write-plan` | ❌ Deprecated | Use `mkdir -p` + `write` instead |
 EOF
 
   msg "Global minimal install complete → $CONFIG_DIR"
@@ -559,7 +587,13 @@ install_project_minimal() {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
+      "permission": {
+        "edit": {
+          "*": "deny",
+          ".agents/plans/**/*.md": "allow"
+        }
+      },
+      "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
@@ -586,7 +620,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 CRITICAL: Always plan before implementing.
 
 ### Plan mode
-- Use the `write-plan` tool to save plans to `.agents/plans/pending/`
+- Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans to `.agents/plans/pending/`
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
