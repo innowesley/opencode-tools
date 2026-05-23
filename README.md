@@ -27,13 +27,15 @@ opencode-tools fixes this:
 ### plan-it
 Use for plan-first development with task tracking and pending plan recovery.
 
-```
+
 Tell the agent:
 
-  Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh
+```  
+   Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh
+```
 
 Or run:
-
+```
   curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash
 ```
 
@@ -46,13 +48,13 @@ Into a specific project:
 ### doc-it
 Use for self-maintaining docs, AI project memory, and automatic changelogs.
 
-```
+
 Tell the agent:
-
+```
   Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh
-
+```
 Or run:
-
+```
   curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash
 ```
 
