@@ -258,6 +258,14 @@ Each plan must include:
 - **Files to modify**: Full paths and what changes each needs
 - **Risks**: Potential issues or edge cases
 - **Implementation steps**: Ordered list of concrete steps
+
+### Tool guidance — write-plan vs native tools
+| Tool | Use for | Why |
+|------|---------|-----|
+| `write-plan` | **New plans** only | Auto-creates `.agents/plans/pending/` directory |
+| `edit` | **Editing** existing plan `.md` files | Direct file edit, no full rewrite |
+| `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
+| Native `write` | ❌ Avoid for plan files | Fails if `pending/` dir doesn't exist |
 EOF
 
   msg "Global install complete → $CONFIG_DIR"
@@ -494,6 +502,14 @@ Each plan must include:
 - **Files to modify**: Full paths and what changes each needs
 - **Risks**: Potential issues or edge cases
 - **Implementation steps**: Ordered list of concrete steps
+
+### Tool guidance — write-plan vs native tools
+| Tool | Use for | Why |
+|------|---------|-----|
+| `write-plan` | **New plans** only | Auto-creates `.agents/plans/pending/` directory |
+| `edit` | **Editing** existing plan `.md` files | Direct file edit, no full rewrite |
+| `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
+| Native `write` | ❌ Avoid for plan files | Fails if `pending/` dir doesn't exist |
 EOF
 
   msg "Global minimal install complete → $CONFIG_DIR"
