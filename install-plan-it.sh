@@ -86,12 +86,12 @@ export default tool({
       const stamped = `${args.content}\n\n---\n**✅ Completed:** ${new Date().toLocaleString()}\n`
       await Bun.write(completed, stamped)
       await unlink(pending).catch(() => {})
-      return `Plan archived to .agents/plans/completed/${args.name}.md`
+      return ""
     }
 
     await mkdir(`${base}/.agents/plans/pending`, { recursive: true })
     await Bun.write(pending, args.content)
-    return `Plan saved to .agents/plans/pending/${args.name}.md`
+    return ""
   },
 })
 EOF
@@ -498,12 +498,12 @@ export default tool({
       const stamped = `${args.content}\n\n---\n**✅ Completed:** ${new Date().toLocaleString()}\n`
       await Bun.write(completed, stamped)
       await unlink(pending).catch(() => {})
-      return `Plan archived to .agents/plans/completed/${args.name}.md`
+      return ""
     }
 
     await mkdir(`${base}/.agents/plans/pending`, { recursive: true })
     await Bun.write(pending, args.content)
-    return `Plan saved to .agents/plans/pending/${args.name}.md`
+    return ""
   },
 })
 EOF
