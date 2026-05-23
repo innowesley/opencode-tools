@@ -26,7 +26,7 @@ install_global() {
     "plan": {
       "permission": {
         "edit": {
-          "*": "deny",
+          "**": "deny",
           ".agents/plans/**/*.md": "allow"
         }
       },
@@ -310,7 +310,7 @@ install_project() {
     "plan": {
       "permission": {
         "edit": {
-          "*": "deny",
+          "**": "deny",
           ".agents/plans/**/*.md": "allow"
         }
       },
@@ -450,7 +450,7 @@ install_global_minimal() {
     "plan": {
       "permission": {
         "edit": {
-          "*": "deny",
+          "**": "deny",
           ".agents/plans/**/*.md": "allow"
         }
       },
@@ -589,7 +589,7 @@ install_project_minimal() {
     "plan": {
       "permission": {
         "edit": {
-          "*": "deny",
+          "**": "deny",
           ".agents/plans/**/*.md": "allow"
         }
       },
