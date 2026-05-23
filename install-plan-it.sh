@@ -252,12 +252,17 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. After saving, output the plan directly in your response using clean markdown — headings, bold, lists, code blocks. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
-4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
-5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically, and the plan content appears as formatted markdown in the **main messages panel (center)**. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
+5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`). Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
    1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
    2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
+
+### Display behavior (OpenCode TUI panels)
+- **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
+- **File viewer (sidebar)** — `write-plan` saves the file here automatically. Shows raw file content.
+- **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
 
 ### Plan format
 Each plan must include:
@@ -509,12 +514,17 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. After saving, output the plan directly in your response using clean markdown — headings, bold, lists, code blocks. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
-4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
-5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically, and the plan content appears as formatted markdown in the **main messages panel (center)**. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
+5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`). Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
    1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
    2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
+
+### Display behavior (OpenCode TUI panels)
+- **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
+- **File viewer (sidebar)** — `write-plan` saves the file here automatically. Shows raw file content.
+- **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
 
 ### Plan format
 Each plan must include:
