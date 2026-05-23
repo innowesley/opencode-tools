@@ -36,7 +36,10 @@ EOF
 CRITICAL: Always plan before implementing.
 
 ### On startup
-- Check `.agents/plans/pending/` — if files exist, tell the user: "You have X pending plans. Type /pending to see them."
+- Check `.agents/plans/pending/` — if files exist, tell the user: "You have X pending plans."
+- Use the `stale-plans` tool to check for abandoned/outdated plans
+- If stale plans are found, mention them and offer: "Want to **continue** one, **archive** a stale one, or use `/pending` to review?"
+- If all plans look current, say "All look current. Type /pending to review."
 
 ### Plan mode
 - Use the `write-plan` tool to save plans to `.agents/plans/pending/`
@@ -128,6 +131,100 @@ If the user says `archive <number>`:
 4. Confirm the plan was archived
 EOF
 
+  cat > "$CONFIG_DIR/tools/stale-plans.ts" << 'EOF'
+import { readdir, readFile, stat } from "node:fs/promises"
+import { tool } from "@opencode-ai/plugin"
+
+const DAY_MS = 86400000
+
+export default tool({
+  description: "Check pending plans for staleness — age, context drift, completion clues, missing references",
+  args: {
+    maxAgeDays: tool.schema.number().default(7).describe("Max age in days before a plan is flagged as stale"),
+  },
+  async execute(args, context) {
+    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const pendingDir = `${base}/.agents/plans/pending`
+    const stale: any[] = []
+    const healthy: string[] = []
+
+    let files: string[]
+    try {
+      files = await readdir(pendingDir)
+    } catch {
+      return JSON.stringify({ count: 0, stale: [], healthy: [] })
+    }
+
+    const planFiles = files.filter(f => f.endsWith(".md"))
+    if (planFiles.length === 0) {
+      return JSON.stringify({ count: 0, stale: [], healthy: [] })
+    }
+
+    const now = Date.now()
+
+    for (const file of planFiles) {
+      const fullPath = `${pendingDir}/${file}`
+      const reasons: string[] = []
+
+      let mtimeMs: number
+      let content: string
+      try {
+        const s = await stat(fullPath)
+        mtimeMs = s.mtimeMs
+
+        content = await readFile(fullPath, "utf-8")
+      } catch {
+        continue
+      }
+
+      const ageDays = (now - mtimeMs) / DAY_MS
+
+      if (ageDays > args.maxAgeDays) {
+        reasons.push(`Plan is ${Math.round(ageDays)} days old (max: ${args.maxAgeDays})`)
+      }
+
+      if (content.match(/\b(done|completed|finished|all steps? are?\s+(done|complete))\b/i)) {
+        reasons.push("Plan text suggests it may already be complete")
+      }
+
+      const contextFiles = ["AGENTS.md", "docs"]
+      for (const ctxFile of contextFiles) {
+        try {
+          const ctxStat = await stat(`${base}/${ctxFile}`)
+          if (ctxStat.mtimeMs > mtimeMs) {
+            reasons.push(`${ctxFile} was modified after this plan was created (context may have shifted)`)
+          }
+        } catch {
+          // context file doesn't exist, skip
+        }
+      }
+
+      const pathRefs = content.match(/(?:`)?[\w./-]+\.\w{1,4}(?:`)?/g) || []
+      for (const ref of pathRefs) {
+        const clean = ref.replace(/`/g, "")
+        if (clean.startsWith(".") || clean.startsWith("/") || clean.includes("/")) {
+          try {
+            await stat(`${base}/${clean}`)
+          } catch {
+            reasons.push(`Referenced file ${clean} no longer exists`)
+            break
+          }
+        }
+      }
+
+      const name = file.replace(/\.md$/, "")
+      if (reasons.length > 0) {
+        stale.push({ name, ageDays: Math.round(ageDays), reasons })
+      } else {
+        healthy.push(name)
+      }
+    }
+
+    return JSON.stringify({ count: planFiles.length, stale, healthy })
+  },
+})
+EOF
+
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
 ---
 name: plan-flow
@@ -185,7 +282,10 @@ EOF
 CRITICAL: Always plan before implementing.
 
 ### On startup
-- Check `.agents/plans/pending/` — if files exist, tell the user: "You have X pending plans. Type /pending to see them."
+- Check `.agents/plans/pending/` — if files exist, tell the user: "You have X pending plans."
+- Use the `stale-plans` tool to check for abandoned/outdated plans
+- If stale plans are found, mention them and offer: "Want to **continue** one, **archive** a stale one, or use `/pending` to review?"
+- If all plans look current, say "All look current. Type /pending to review."
 
 ### Plan mode
 - Use the `write-plan` tool to save plans to `.agents/plans/pending/`
@@ -197,6 +297,7 @@ EOF
 
   cp "$CONFIG_DIR/tools/write-plan.ts" "$dir/.opencode/tools/write-plan.ts"
   cp "$CONFIG_DIR/tools/list-plans.ts" "$dir/.opencode/tools/list-plans.ts"
+  cp "$CONFIG_DIR/tools/stale-plans.ts" "$dir/.opencode/tools/stale-plans.ts"
   cp "$CONFIG_DIR/commands/pending.md" "$dir/.opencode/commands/pending.md"
   cp "$CONFIG_DIR/skills/plan-flow/SKILL.md" "$dir/.opencode/skills/plan-flow/SKILL.md"
 
@@ -206,7 +307,7 @@ EOF
 uninstall_all() {
   warn "Uninstalling planit..."
 
-  for f in "$CONFIG_DIR/opencode.json" "$CONFIG_DIR/AGENTS.md" "$CONFIG_DIR/tools/write-plan.ts" "$CONFIG_DIR/tools/list-plans.ts" "$CONFIG_DIR/commands/pending.md" "$CONFIG_DIR/skills/plan-flow/SKILL.md"; do
+  for f in "$CONFIG_DIR/opencode.json" "$CONFIG_DIR/AGENTS.md" "$CONFIG_DIR/tools/write-plan.ts" "$CONFIG_DIR/tools/list-plans.ts" "$CONFIG_DIR/tools/stale-plans.ts" "$CONFIG_DIR/commands/pending.md" "$CONFIG_DIR/skills/plan-flow/SKILL.md"; do
     if [ -f "$f" ]; then
       rm "$f"
       info "  Removed: $f"
@@ -239,11 +340,20 @@ show_status() {
     fi
   done
 
+  local has_stale_plans=false
+
   if [ -f "$CONFIG_DIR/tools/list-plans.ts" ]; then
     msg "  ✅ tools/list-plans.ts"
     has_list_plans=true
   else
     warn "  ⬜ tools/list-plans.ts (optional — not installed)"
+  fi
+
+  if [ -f "$CONFIG_DIR/tools/stale-plans.ts" ]; then
+    msg "  ✅ tools/stale-plans.ts"
+    has_stale_plans=true
+  else
+    warn "  ⬜ tools/stale-plans.ts (optional — not installed)"
   fi
 
   if [ -f "$CONFIG_DIR/commands/pending.md" ]; then
@@ -255,7 +365,7 @@ show_status() {
 
   echo ""
   if $all_ok; then
-    if $has_list_plans || $has_pending_cmd; then
+    if $has_list_plans || $has_pending_cmd || $has_stale_plans; then
       msg "planit is fully installed (with extras)"
     else
       msg "planit is installed (minimal)"
