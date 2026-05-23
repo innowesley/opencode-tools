@@ -22,15 +22,9 @@ install_global() {
   cat > "$CONFIG_DIR/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "edit": {
-      "*": "deny",
-      ".agents/plans/*.md": "allow"
-    }
-  },
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
+      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans (native `write` is blocked by Plan mode's read-only restriction). After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
@@ -250,7 +244,7 @@ EOF
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
 ---
 name: plan-flow
-description: Plan-first workflow — create plans using `mkdir -p` + `write`, archive via `edit`+`mv` on completion
+description: Plan-first workflow — create plans using `write-plan` tool (native `write` is blocked in Plan mode's read-only restriction), archive via `edit`+`mv` on completion
 ---
 
 ## Critical rule
@@ -263,7 +257,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then run `bash mkdir -p .agents/plans/pending/` to ensure the directory exists. Use `write` to save the plan to `.agents/plans/pending/<name>.md`. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+3. **Write plan** — Say "Writing plan..." then use the `write-plan` tool to save the plan. (Native `write` is blocked by Plan mode's read-only restriction — `write-plan` bypasses it.) Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`).
 6. **Archiving** — When implementation is done:
@@ -272,7 +266,7 @@ Always create a written plan before making code changes.
 
 ### Display behavior (OpenCode TUI panels)
 - **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
-- **File viewer (sidebar)** — `write` saves the file here. Shows raw file content.
+- **File viewer (sidebar)** — `write-plan` saves the file here. Shows raw file content.
 - **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
 
 ### Plan format
@@ -283,13 +277,13 @@ Each plan must include:
 - **Risks**: Potential issues or edge cases
 - **Implementation steps**: Ordered list of concrete steps
 
-### Tool guidance — native tools vs deprecated write-plan
-| Tool | Use for | Why |
-|------|---------|-----|
-| `bash mkdir -p` then `write` | **New plans** | `mkdir -p` ensures dir exists; `write` saves the file |
-| `edit` | **Editing** existing plan `.md` files | Direct file edit, no full rewrite |
-| `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
-| `write-plan` | ❌ Deprecated | Use `mkdir -p` + `write` instead |
+### Tool guidance — Plan mode vs Build mode
+| Mode | Tool | Use for | Why |
+|------|------|---------|-----|
+| Plan | `write-plan` | **New plans** | Bypasses Plan mode's read-only restriction |
+| Plan | `edit` | **Editing** existing plan `.md` files | Only works on existing files (diff shown) |
+| Plan | `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
+| Build | `write` | **New plans** (if not in Plan mode) | Native write, works outside Plan mode |
 EOF
 
   msg "Global install complete → $CONFIG_DIR"
@@ -306,15 +300,9 @@ install_project() {
   cat > "$dir/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "edit": {
-      "*": "deny",
-      ".agents/plans/*.md": "allow"
-    }
-  },
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
+      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans (native `write` is blocked by Plan mode's read-only restriction). After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
@@ -446,15 +434,9 @@ install_global_minimal() {
   cat > "$CONFIG_DIR/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "edit": {
-      "*": "deny",
-      ".agents/plans/*.md": "allow"
-    }
-  },
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
+      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans (native `write` is blocked by Plan mode's read-only restriction). After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
@@ -529,7 +511,7 @@ EOF
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
 ---
 name: plan-flow
-description: Plan-first workflow — create plans using `mkdir -p` + `write`, archive via `edit`+`mv` on completion
+description: Plan-first workflow — create plans using `write-plan` tool (native `write` is blocked in Plan mode's read-only restriction), archive via `edit`+`mv` on completion
 ---
 
 ## Critical rule
@@ -542,7 +524,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then run `bash mkdir -p .agents/plans/pending/` to ensure the directory exists. Use `write` to save the plan to `.agents/plans/pending/<name>.md`. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+3. **Write plan** — Say "Writing plan..." then use the `write-plan` tool to save the plan. (Native `write` is blocked by Plan mode's read-only restriction — `write-plan` bypasses it.) Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`).
 6. **Archiving** — When implementation is done:
@@ -551,7 +533,7 @@ Always create a written plan before making code changes.
 
 ### Display behavior (OpenCode TUI panels)
 - **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
-- **File viewer (sidebar)** — `write` saves the file here. Shows raw file content.
+- **File viewer (sidebar)** — `write-plan` saves the file here. Shows raw file content.
 - **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
 
 ### Plan format
@@ -562,13 +544,13 @@ Each plan must include:
 - **Risks**: Potential issues or edge cases
 - **Implementation steps**: Ordered list of concrete steps
 
-### Tool guidance — native tools vs deprecated write-plan
-| Tool | Use for | Why |
-|------|---------|-----|
-| `bash mkdir -p` then `write` | **New plans** | `mkdir -p` ensures dir exists; `write` saves the file |
-| `edit` | **Editing** existing plan `.md` files | Direct file edit, no full rewrite |
-| `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
-| `write-plan` | ❌ Deprecated | Use `mkdir -p` + `write` instead |
+### Tool guidance — Plan mode vs Build mode
+| Mode | Tool | Use for | Why |
+|------|------|---------|-----|
+| Plan | `write-plan` | **New plans** | Bypasses Plan mode's read-only restriction |
+| Plan | `edit` | **Editing** existing plan `.md` files | Only works on existing files (diff shown) |
+| Plan | `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
+| Build | `write` | **New plans** (if not in Plan mode) | Native write, works outside Plan mode |
 EOF
 
   msg "Global minimal install complete → $CONFIG_DIR"
@@ -585,15 +567,9 @@ install_project_minimal() {
   cat > "$dir/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "edit": {
-      "*": "deny",
-      ".agents/plans/*.md": "allow"
-    }
-  },
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
+      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans (native `write` is blocked by Plan mode's read-only restriction). After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
     }
   }
 }
