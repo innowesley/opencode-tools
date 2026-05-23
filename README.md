@@ -2,28 +2,38 @@
 
 Install once, use in every OpenCode project.
 
-## Quick install
+## Copy-paste into OpenCode
+
+```
+Install this https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh
+```
+
+The agent will curl and run it automatically. No manual steps.
+
+**Or run it yourself:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/planit/main/install-planit.sh | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash
 ```
 
 ## Install into a project too
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/planit/main/install-planit.sh | bash -s -- install ./my-project
+curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash -s -- install ./my-project
 ```
+
+Or tell the agent: *"Install planit into this project from the URL."*
 
 ## Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/planit/main/install-planit.sh | bash -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash -s -- uninstall
 ```
 
 ## Check status
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/planit/main/install-planit.sh | bash -s -- status
+curl -fsSL https://raw.githubusercontent.com/innowesley/planit/main/install-planit.sh | bash -s -- status
 ```
 
 ## How it works
