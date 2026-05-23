@@ -778,7 +778,7 @@ Every EXECUTE mode task MUST follow this pipeline:
 8. **TRACEABILITY** — Run `traceability-generator` to refresh the feature map
 9. **AI CONTEXT** — Run `ai-context-generator` to refresh project memory
 10. **VIOLATIONS** — Run `rule-violation-checker` to verify no new violations
-11. **COMPLETE** — Archive plan with `write-plan` status=completed
+11. **COMPLETE** — Archive plan with edit+mv (prepend completion timestamp, then mv to `.agents/plans/completed/`)
 
 Tasks FAIL if any doc step is skipped.
 EOF

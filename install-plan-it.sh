@@ -50,7 +50,9 @@ CRITICAL: Always plan before implementing.
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
-- After completing implementation, use `write-plan` with `status: "completed"` to archive the plan to `.agents/plans/completed/`
+- After completing implementation, archive the plan:
+  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
+  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
 EOF
 
   cat > "$CONFIG_DIR/tools/write-plan.ts" << 'EOF'
@@ -130,8 +132,8 @@ If the user picks a number, proceed with that plan.
 
 If the user says `archive <number>`:
 1. Read the full content of that plan's `.md` file
-2. Prepend `**Archived as outdated/superseded**` to the content
-3. Call `write-plan` with `name` (filename without .md), `content` (modified content), and `status: "completed"`
+2. Use `edit` to prepend `**Archived as outdated/superseded**` to the content
+3. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
 4. Confirm the plan was archived
 EOF
 
@@ -232,7 +234,7 @@ EOF
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
 ---
 name: plan-flow
-description: Plan-first workflow — create plans using write-plan tool, auto-archive on completion
+description: Plan-first workflow — create plans using write-plan tool, archive via edit+mv on completion
 ---
 
 ## Plan-First Workflow
@@ -247,7 +249,10 @@ Always create a written plan before making code changes.
    - `content` — full plan in markdown
    - `status: "pending"` — for active plans
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
-5. When implementation is done, call `write-plan` with `status: "completed"` to archive
+5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
+6. **Archiving** — When implementation is done:
+   1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
+   2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
 
 ### Plan format
 Each plan must include:
@@ -300,7 +305,9 @@ CRITICAL: Always plan before implementing.
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
-- After completing implementation, use `write-plan` with `status: "completed"` to archive the plan to `.agents/plans/completed/`
+- After completing implementation, archive the plan:
+  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
+  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
 EOF
 
   cp "$CONFIG_DIR/tools/write-plan.ts" "$dir/.opencode/tools/write-plan.ts"
@@ -427,7 +434,9 @@ CRITICAL: Always plan before implementing.
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
-- After completing implementation, use `write-plan` with `status: "completed"` to archive the plan to `.agents/plans/completed/`
+- After completing implementation, archive the plan:
+  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
+  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
 EOF
 
   cat > "$CONFIG_DIR/tools/write-plan.ts" << 'EOF'
@@ -464,7 +473,7 @@ EOF
   cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
 ---
 name: plan-flow
-description: Plan-first workflow — create plans using write-plan tool, auto-archive on completion
+description: Plan-first workflow — create plans using write-plan tool, archive via edit+mv on completion
 ---
 
 ## Plan-First Workflow
@@ -479,7 +488,10 @@ Always create a written plan before making code changes.
    - `content` — full plan in markdown
    - `status: "pending"` — for active plans
 4. **Ask next** — Use the `question` tool to ask the user: implement now (tell them to press Tab for Build), edit the plan, or cancel
-5. When implementation is done, call `write-plan` with `status: "completed"` to archive
+5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. Do NOT rewrite the whole plan with `write-plan`.
+6. **Archiving** — When implementation is done:
+   1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
+   2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
 
 ### Plan format
 Each plan must include:
@@ -532,7 +544,9 @@ CRITICAL: Always plan before implementing.
 - Load the `plan-flow` skill for plan format guidance
 
 ### Build mode
-- After completing implementation, use `write-plan` with `status: "completed"` to archive the plan to `.agents/plans/completed/`
+- After completing implementation, archive the plan:
+  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
+  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
 EOF
 
   cp "$CONFIG_DIR/tools/write-plan.ts" "$dir/.opencode/tools/write-plan.ts"
