@@ -252,7 +252,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically, and the plan content appears as formatted markdown in the **main messages panel (center)**. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`). Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
@@ -514,7 +514,7 @@ Always create a written plan before making code changes.
 ### How to use
 1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
 2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically, and the plan content appears as formatted markdown in the **main messages panel (center)**. OpenCode's chat renders this with colors natively. Do NOT use `read` on the `.md` file (shows ugly line numbers).
+3. **Write plan** — Say "Writing plan..." then call `write-plan` to save. OpenCode shows the saved file in its file viewer (sidebar) automatically. Then output the full plan content as formatted markdown in your response — it renders in the **main messages panel (center)** with native colors. Do NOT use `read` on the `.md` file (shows ugly line numbers).
 4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
 5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`). Do NOT rewrite the whole plan with `write-plan`.
 6. **Archiving** — When implementation is done:
