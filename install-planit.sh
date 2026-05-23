@@ -23,6 +23,7 @@ install_global() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
+    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
@@ -31,15 +32,19 @@ install_global() {
 EOF
 
   cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
+# CRITICAL STARTUP RULE
+On EVERY new session, BEFORE responding to the user's first message:
+1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+2. Run the `stale-plans` tool to check for abandoned/outdated plans
+3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+4. If all look current: say "All look current. Type /pending to review."
+5. Only THEN proceed with the user's request.
+
+---
+
 ## Plan-First Workflow
 
 CRITICAL: Always plan before implementing.
-
-### On startup
-- Check `.agents/plans/pending/` — if files exist, tell the user: "You have X pending plans."
-- Use the `stale-plans` tool to check for abandoned/outdated plans
-- If stale plans are found, mention them and offer: "Want to **continue** one, **archive** a stale one, or use `/pending` to review?"
-- If all plans look current, say "All look current. Type /pending to review."
 
 ### Plan mode
 - Use the `write-plan` tool to save plans to `.agents/plans/pending/`
@@ -269,6 +274,7 @@ install_project() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
+    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
@@ -277,15 +283,19 @@ install_project() {
 EOF
 
   cat > "$dir/AGENTS.md" << 'EOF'
+# CRITICAL STARTUP RULE
+On EVERY new session, BEFORE responding to the user's first message:
+1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+2. Run the `stale-plans` tool to check for abandoned/outdated plans
+3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+4. If all look current: say "All look current. Type /pending to review."
+5. Only THEN proceed with the user's request.
+
+---
+
 ## Plan-First Workflow
 
 CRITICAL: Always plan before implementing.
-
-### On startup
-- Check `.agents/plans/pending/` — if files exist, tell the user: "You have X pending plans."
-- Use the `stale-plans` tool to check for abandoned/outdated plans
-- If stale plans are found, mention them and offer: "Want to **continue** one, **archive** a stale one, or use `/pending` to review?"
-- If all plans look current, say "All look current. Type /pending to review."
 
 ### Plan mode
 - Use the `write-plan` tool to save plans to `.agents/plans/pending/`
@@ -392,6 +402,7 @@ install_global_minimal() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
+    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
@@ -400,6 +411,16 @@ install_global_minimal() {
 EOF
 
   cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
+# CRITICAL STARTUP RULE
+On EVERY new session, BEFORE responding to the user's first message:
+1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+2. Run the `stale-plans` tool to check for abandoned/outdated plans
+3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+4. If all look current: say "All look current. Type /pending to review."
+5. Only THEN proceed with the user's request.
+
+---
+
 ## Plan-First Workflow
 
 CRITICAL: Always plan before implementing.
@@ -487,6 +508,7 @@ install_project_minimal() {
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
+    "system": "CRITICAL STARTUP RULE: On the first user message of a new session, check `.agents/plans/pending/` and run `stale-plans` before responding. Never skip this startup check.",
     "plan": {
       "prompt": "You are in Plan mode. If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use the `write-plan` tool to save plans. After writing the plan, use the `question` tool to ask: implement now (tell them to press Tab for Build), edit the plan, or cancel."
     }
@@ -495,6 +517,16 @@ install_project_minimal() {
 EOF
 
   cat > "$dir/AGENTS.md" << 'EOF'
+# CRITICAL STARTUP RULE
+On EVERY new session, BEFORE responding to the user's first message:
+1. Check `.agents/plans/pending/` — if files exist, tell user "You have X pending plans."
+2. Run the `stale-plans` tool to check for abandoned/outdated plans
+3. If stale plans exist: offer to continue, archive, or use `/pending` to review
+4. If all look current: say "All look current. Type /pending to review."
+5. Only THEN proceed with the user's request.
+
+---
+
 ## Plan-First Workflow
 
 CRITICAL: Always plan before implementing.
