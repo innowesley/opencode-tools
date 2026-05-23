@@ -15,7 +15,7 @@ warn() { printf "${YELLOW}%s${NC}\n" "$1"; }
 err()  { printf "${RED}%s${NC}\n" "$1"; }
 
 install_global() {
-  msg "Installing planit globally..."
+  msg "Installing plan-it globally..."
 
   mkdir -p "$CONFIG_DIR/tools" "$CONFIG_DIR/skills/plan-flow" "$CONFIG_DIR/commands"
 
@@ -266,7 +266,7 @@ install_project() {
   local dir="$1"
   mkdir -p "$dir"
 
-  msg "Installing planit into project: $dir"
+  msg "Installing plan-it into project: $dir"
 
   mkdir -p "$dir/.opencode/tools" "$dir/.opencode/skills/plan-flow" "$dir/.opencode/commands" "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
 
@@ -315,7 +315,7 @@ EOF
 }
 
 uninstall_all() {
-  warn "Uninstalling planit..."
+  warn "Uninstalling plan-it..."
 
   for f in "$CONFIG_DIR/opencode.json" "$CONFIG_DIR/AGENTS.md" "$CONFIG_DIR/tools/write-plan.ts" "$CONFIG_DIR/tools/list-plans.ts" "$CONFIG_DIR/tools/stale-plans.ts" "$CONFIG_DIR/commands/pending.md" "$CONFIG_DIR/skills/plan-flow/SKILL.md"; do
     if [ -f "$f" ]; then
@@ -334,7 +334,7 @@ uninstall_all() {
 
 show_status() {
   echo ""
-  info "=== planit status ==="
+  info "=== plan-it status ==="
   echo ""
 
   local all_ok=true
@@ -376,12 +376,12 @@ show_status() {
   echo ""
   if $all_ok; then
     if $has_list_plans || $has_pending_cmd || $has_stale_plans; then
-      msg "planit is fully installed (with extras)"
+      msg "plan-it is fully installed (with extras)"
     else
-      msg "planit is installed (minimal)"
+      msg "plan-it is installed (minimal)"
     fi
   else
-    err "planit is incomplete — run 'install' to fix"
+    err "plan-it is incomplete — run 'install' to fix"
   fi
   echo ""
 }
@@ -394,7 +394,7 @@ install_minimal() {
 }
 
 install_global_minimal() {
-  msg "Installing planit (minimal) globally..."
+  msg "Installing plan-it (minimal) globally..."
 
   mkdir -p "$CONFIG_DIR/tools" "$CONFIG_DIR/skills/plan-flow"
 
@@ -500,7 +500,7 @@ install_project_minimal() {
   local dir="$1"
   mkdir -p "$dir"
 
-  msg "Installing planit (minimal) into project: $dir"
+  msg "Installing plan-it (minimal) into project: $dir"
 
   mkdir -p "$dir/.opencode/tools" "$dir/.opencode/skills/plan-flow" "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
 
@@ -549,11 +549,11 @@ usage() {
   echo "Usage: $0 <command> [project-dir]"
   echo ""
   echo "Commands:"
-  echo "  install               Install planit globally (full)"
+  echo "  install               Install plan-it globally (full)"
   echo "  install <project>     Install globally + into project directory (full)"
-  echo "  minimal               Install planit globally (without list-plans tool / pending command)"
+  echo "  minimal               Install plan-it globally (without list-plans tool / pending command)"
   echo "  minimal <project>     Install globally + into project directory (minimal)"
-  echo "  uninstall             Remove planit from global config"
+  echo "  uninstall             Remove plan-it from global config"
   echo "  status                Show installed files"
   echo ""
   echo "Examples:"

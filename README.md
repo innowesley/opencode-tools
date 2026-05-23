@@ -2,25 +2,25 @@
 
 A collection of tools that make OpenCode smarter about planning and documentation.
 
-- **planit** — Plan-first workflow: analyze, plan, implement, archive
+- **plan-it** — Plan-first workflow: analyze, plan, implement, archive
 - **doc-it** — AI-native documentation enforcement: auto-update docs on every change
 
 ---
 
 ## Quick start
 
-### 1. Install planit (plan-first workflow)
+### 1. Install plan-it (plan-first workflow)
 
 Tell the agent:
 
 ```
-Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh
+Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh
 ```
 
 Or run it yourself:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash
 ```
 
 ### 2. (Optional) Add doc-it for documentation enforcement
@@ -39,22 +39,22 @@ curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/inst
 
 ---
 
-## planit — Plan-first workflow
+## plan-it — Plan-first workflow
 
 Plan once, use in every OpenCode project. Forces OpenCode to plan before building.
 
 ### Install into a specific project
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- install ./my-project
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- install ./my-project
 ```
 
-Or tell the agent: *"Install planit into this project from the URL."*
+Or tell the agent: *"Install plan-it into this project from the URL."*
 
 ### Minimal install (no extras)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- minimal
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- minimal
 ```
 
 Skips optional extras: `list-plans`, `stale-plans` tools and `/pending` command.
@@ -62,13 +62,13 @@ Skips optional extras: `list-plans`, `stale-plans` tools and `/pending` command.
 ### Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- uninstall
 ```
 
 ### Check status
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-planit.sh | bash -s -- status
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash -s -- status
 ```
 
 ### What it installs
@@ -151,7 +151,7 @@ Tasks **FAIL** if any doc step is skipped.
                            │
                     ┌──────▼───────┐
                     │ Check for    │
-                    │ pending/stale│ ←── planit
+                    │ pending/stale│ ←── plan-it
                     │ plans        │
                     └──────┬───────┘
                            │
@@ -162,14 +162,14 @@ Tasks **FAIL** if any doc step is skipped.
                            │
                     ┌──────▼───────┐
                     │ Plan mode:   │
-                    │ analyze, ask,│ ←── planit
+                    │ analyze, ask,│ ←── plan-it
                     │ write plan   │
                     └──────┬───────┘
                            │
                     ┌──────▼───────┐
                     │ Build mode:  │
                     │ implement,   │
-                    │ update docs, │ ←── planit + doc-it
+                    │ update docs, │ ←── plan-it + doc-it
                     │ changelog,   │
                     │ archive plan │
                     └──────────────┘
