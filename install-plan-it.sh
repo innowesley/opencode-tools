@@ -22,6 +22,12 @@ install_global() {
   cat > "$CONFIG_DIR/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": {
+      "*": "deny",
+      ".agents/plans/*.md": "allow"
+    }
+  },
   "agent": {
     "plan": {
       "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
@@ -300,6 +306,12 @@ install_project() {
   cat > "$dir/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": {
+      "*": "deny",
+      ".agents/plans/*.md": "allow"
+    }
+  },
   "agent": {
     "plan": {
       "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
@@ -434,6 +446,12 @@ install_global_minimal() {
   cat > "$CONFIG_DIR/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": {
+      "*": "deny",
+      ".agents/plans/*.md": "allow"
+    }
+  },
   "agent": {
     "plan": {
       "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
@@ -567,6 +585,12 @@ install_project_minimal() {
   cat > "$dir/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": {
+      "*": "deny",
+      ".agents/plans/*.md": "allow"
+    }
+  },
   "agent": {
     "plan": {
       "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. Use `bash mkdir -p .agents/plans/pending/` then `write` to save plans. After writing the plan, output the full plan as formatted markdown in your response, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
