@@ -37,7 +37,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
 
 ---
 
@@ -128,7 +128,7 @@ If there are any, ask:
 - "Type the **number** to continue working on a plan"
 - "Or type `archive <number>` to move that plan to `.agents/plans/completed/` as outdated/superseded"
 
-If the user picks a number, proceed with that plan.
+If the user picks a number, proceed with that plan. Do NOT read the plan file content — the user already sees it in OpenCode's own plan viewer.
 
 If the user says `archive <number>`:
 1. Read the full content of that plan's `.md` file
@@ -297,7 +297,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
 
 ---
 
@@ -426,7 +426,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
 
 ---
 
@@ -541,7 +541,7 @@ On EVERY new session, BEFORE responding to the user's first message:
 2. Run the `stale-plans` tool to check for abandoned/outdated plans
 3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
 4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request.
+5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file — OpenCode's own plan viewer handles the display. Just mention the filename and heading.
 
 ---
 
