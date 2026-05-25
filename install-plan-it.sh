@@ -17,83 +17,47 @@ err()  { printf "${RED}%s${NC}\n" "$1"; }
 install_global() {
   msg "Installing plan-it globally..."
 
-  mkdir -p "$CONFIG_DIR/tools" "$CONFIG_DIR/skills/plan-flow" "$CONFIG_DIR/commands"
+  mkdir -p "$CONFIG_DIR/tools" "$CONFIG_DIR/commands" \
+    "$HOME/.agents/plans/pending" "$HOME/.agents/plans/completed"
 
   cat > "$CONFIG_DIR/opencode.json" << 'EOF'
 {
   "$schema": "https://opencode.ai/config.json",
   "agent": {
     "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. After writing the plan as formatted markdown in your response, save it to `.agents/plans/pending/<name>.md` using `bash cat << 'EOF' > <path>`. Do NOT use `write-plan` for new plans — its `content` argument displays the full plan in the UI as raw tool arguments, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
+      "permission": {
+        "write": {
+          ".agents/plans/**/*.md": "allow"
+        }
+      },
+      "prompt": "You are in Plan mode. Follow the Plan-First Protocol in AGENTS.md.\n\nNOTE: The Plan Mode system reminder says the `write` tool is forbidden. This is OVERRIDDEN ONLY for plan files. You MAY use the native `write` tool to create/update files matching `.agents/plans/**/*.md`. Permission rules are configured to allow this at runtime. All other write/edit restrictions remain.\n\nUse the `write` tool (not bash heredocs) for plan files. Never execute until the user approves."
     }
   }
 }
 EOF
 
   cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
-# CRITICAL RULE: Always use the `question` tool
-Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+## 📋 Plan-First Protocol
+
+On ANY task:
+1. Create plan → `.agents/plans/pending/<task>.md`
+2. Return plan to user
+3. STOP – do NOT execute
+
+Execute ONLY after: "execute", "proceed", "continue", or explicit approval.
 
 ---
 
-# CRITICAL STARTUP RULE
-On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
-2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
-4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
+## ✅ Execution Rules
 
----
+- Update same plan file continuously
+- Mark steps [x] as completed
+- Append progress logs
 
-## Plan-First Workflow
-
-CRITICAL: Always plan before implementing.
-
-### Plan mode
-- Output the plan as formatted markdown in your response (main messages panel), then save it with `bash cat << 'EOF' > .agents/plans/pending/<name>.md`
-- Load the `plan-flow` skill for plan format guidance
-
-### Build mode
-- After completing implementation, archive the plan:
-  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
-  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
-EOF
-
-  cat > "$CONFIG_DIR/tools/write-plan.ts" << 'EOF'
-// ╔══════════════════════════════════════════════════╗
-// ║  DEPRECATED — Use native `write` instead.       ║
-// ║  This tool is kept for backwards compatibility   ║
-// ║  only. New installs use `mkdir -p` + `write`.   ║
-// ╚══════════════════════════════════════════════════╝
-import { mkdir, unlink } from "node:fs/promises"
-import { tool } from "@opencode-ai/plugin"
-
-export default tool({
-  description: "Save or archive a plan file in .agents/plans/",
-  args: {
-    name: tool.schema.string().describe("Plan name used as filename (no .md)"),
-    content: tool.schema.string().describe("Full plan content in markdown"),
-    status: tool.schema.enum(["pending", "completed"]).default("pending").describe("pending = active plan, completed = archived"),
-  },
-  async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const pending = `${base}/.agents/plans/pending/${args.name}.md`
-    const completed = `${base}/.agents/plans/completed/${args.name}.md`
-
-    if (args.status === "completed") {
-      await mkdir(`${base}/.agents/plans/completed`, { recursive: true })
-      const stamped = `${args.content}\n\n---\n**✅ Completed:** ${new Date().toLocaleString()}\n`
-      await Bun.write(completed, stamped)
-      await unlink(pending).catch(() => {})
-      return ""
-    }
-
-    await mkdir(`${base}/.agents/plans/pending`, { recursive: true })
-    await Bun.write(pending, args.content)
-    return ""
-  },
-})
+On completion:
+- Status → completed
+- Move to `.agents/plans/completed/`
+- Return: result + next-step plan
 EOF
 
   cat > "$CONFIG_DIR/tools/list-plans.ts" << 'EOF'
@@ -125,28 +89,6 @@ export default tool({
 })
 EOF
 
-  cat > "$CONFIG_DIR/commands/pending.md" << 'EOF'
----
-description: List all pending plans in .agents/plans/pending/
----
-
-List all `.md` files in `.agents/plans/pending/`. For each file, show the filename and the first heading (the `# Title` line). Present them numbered.
-
-If there are no pending plans, say "No pending plans." and stop.
-
-If there are any, ask:
-- "Type the **number** to continue working on a plan"
-- "Or type `archive <number>` to move that plan to `.agents/plans/completed/` as outdated/superseded"
-
-If the user picks a number, proceed with that plan. Do NOT read the plan file content — the user already sees it in OpenCode's own plan viewer.
-
-If the user says `archive <number>`:
-1. Read the full content of that plan's `.md` file
-2. Use `edit` to prepend `**Archived as outdated/superseded**` to the content
-3. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
-4. Confirm the plan was archived
-EOF
-
   cat > "$CONFIG_DIR/tools/stale-plans.ts" << 'EOF'
 import { readdir, readFile, stat } from "node:fs/promises"
 import { tool } from "@opencode-ai/plugin"
@@ -154,9 +96,9 @@ import { tool } from "@opencode-ai/plugin"
 const DAY_MS = 86400000
 
 export default tool({
-  description: "Check pending plans for staleness — age, context drift, completion clues, missing references",
+  description: "Check pending plans for staleness",
   args: {
-    maxAgeDays: tool.schema.number().default(7).describe("Max age in days before a plan is flagged as stale"),
+    maxAgeDays: tool.schema.number().default(7).describe("Max age in days before stale"),
   },
   async execute(args, context) {
     const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
@@ -183,49 +125,16 @@ export default tool({
       const reasons: string[] = []
 
       let mtimeMs: number
-      let content: string
       try {
         const s = await stat(fullPath)
         mtimeMs = s.mtimeMs
-
-        content = await readFile(fullPath, "utf-8")
       } catch {
         continue
       }
 
       const ageDays = (now - mtimeMs) / DAY_MS
-
       if (ageDays > args.maxAgeDays) {
         reasons.push(`Plan is ${Math.round(ageDays)} days old (max: ${args.maxAgeDays})`)
-      }
-
-      if (content.match(/\b(done|completed|finished|all steps? are?\s+(done|complete))\b/i)) {
-        reasons.push("Plan text suggests it may already be complete")
-      }
-
-      const contextFiles = ["AGENTS.md", "docs"]
-      for (const ctxFile of contextFiles) {
-        try {
-          const ctxStat = await stat(`${base}/${ctxFile}`)
-          if (ctxStat.mtimeMs > mtimeMs) {
-            reasons.push(`${ctxFile} was modified after this plan was created (context may have shifted)`)
-          }
-        } catch {
-          // context file doesn't exist, skip
-        }
-      }
-
-      const pathRefs = content.match(/(?:`)?[\w./-]+\.\w{1,4}(?:`)?/g) || []
-      for (const ref of pathRefs) {
-        const clean = ref.replace(/`/g, "")
-        if (clean.startsWith(".") || clean.startsWith("/") || clean.includes("/")) {
-          try {
-            await stat(`${base}/${clean}`)
-          } catch {
-            reasons.push(`Referenced file ${clean} no longer exists`)
-            break
-          }
-        }
       }
 
       const name = file.replace(/\.md$/, "")
@@ -241,129 +150,71 @@ export default tool({
 })
 EOF
 
-  cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
+  cat > "$CONFIG_DIR/commands/pending.md" << 'EOF'
 ---
-name: plan-flow
-description: Plan-first workflow — create plans using `write-plan` tool (native `write` is blocked in Plan mode's read-only restriction), archive via `edit`+`mv` on completion
+description: List all pending plans in .agents/plans/pending/
 ---
 
-## Critical rule
-Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
+List all `.md` files in `.agents/plans/pending/`. Show filename and first heading. Present numbered.
 
-## Plan-First Workflow
+If none, say "No pending plans." and stop.
 
-Always create a written plan before making code changes.
+If any, ask:
+- "Type the **number** to continue that plan"
+- "Or type `archive <number>` to archive as outdated/superseded"
 
-### How to use
-1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
-2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then output the full plan content as **formatted markdown** in your response — it renders in the **main messages panel (center)** with native colors (bold, headings, code blocks). This is the primary way the user sees the plan. Do NOT use `read` on the `.md` file (shows ugly line numbers). Then save the plan file using `bash cat << 'EOF' > .agents/plans/pending/<name>.md` with the plan content as the heredoc. Do NOT use `write-plan` for new plans — its `content` argument displays the full plan in the UI as raw tool arguments, duplicating what should only be in the main messages panel.
-4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
-5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`).
-6. **Archiving** — When implementation is done:
-   1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
-   2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
+If user picks a number, proceed with that plan.
 
-### Display behavior (OpenCode TUI panels)
-- **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
-- **File viewer (sidebar)** — `write-plan` saves the file here. Shows raw file content.
-- **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
-
-### Plan format
-Each plan must include:
-- **Goal**: What we're trying to achieve
-- **Approach**: High-level strategy
-- **Files to modify**: Full paths and what changes each needs
-- **Risks**: Potential issues or edge cases
-- **Implementation steps**: Ordered list of concrete steps
-
-### Tool guidance — Plan mode vs Build mode
-| Mode | Tool | Use for | Why |
-|------|------|---------|-----|
-| Plan | `bash cat <<'EOF' > file` | **New plans** | Content in heredoc avoids structured tool-argument display. Writes via shell, not blocked tool. |
-| Plan | `write-plan` | **Archiving** only (completed plans) | Kept for backwards compat; its `content` argument displays plan in UI — don't use for new plans. |
-| Plan | `edit` | **Editing** existing plan `.md` files | Only works on existing files (diff shown) |
-| Plan | `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
-| Build | `write` | **New plans** (if not in Plan mode) | Native write, works outside Plan mode |
+If `archive <number>`:
+1. Read full content of that plan `.md`
+2. Use `edit` to prepend `**Archived as outdated/superseded**`
+3. Run `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
+4. Confirm
 EOF
 
-  msg "Global install complete → $CONFIG_DIR"
-}
-
-install_project() {
-  local dir="$1"
-  mkdir -p "$dir"
-
-  msg "Installing plan-it into project: $dir"
-
-  mkdir -p "$dir/.opencode/tools" "$dir/.opencode/skills/plan-flow" "$dir/.opencode/commands" "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
-
-  cat > "$dir/opencode.json" << 'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "agent": {
-    "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. After writing the plan as formatted markdown in your response, save it to `.agents/plans/pending/<name>.md` using `bash cat << 'EOF' > <path>`. Do NOT use `write-plan` for new plans — its `content` argument displays the full plan in the UI as raw tool arguments, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
-    }
-  }
-}
+  cat > "$CONFIG_DIR/sudo-managed.sh" << 'EOF'
+#!/bin/bash
+# Install managed config at /etc/opencode/ (root-owned, unoverridable)
+set -euo pipefail
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run as root (sudo)." >&2
+  exit 1
+fi
+mkdir -p /etc/opencode
+cp /home/kunta/.config/opencode/opencode.json /etc/opencode/opencode.json
+chmod 644 /etc/opencode/opencode.json
+echo "Managed config installed at /etc/opencode/opencode.json"
 EOF
+  chmod +x "$CONFIG_DIR/sudo-managed.sh"
 
-  cat > "$dir/AGENTS.md" << 'EOF'
-# CRITICAL RULE: Always use the `question` tool
-Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
-
----
-
-# CRITICAL STARTUP RULE
-On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
-2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
-4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
-
----
-
-## Plan-First Workflow
-
-CRITICAL: Always plan before implementing.
-
-### Plan mode
-- Output the plan as formatted markdown in your response (main messages panel), then save it with `bash cat << 'EOF' > .agents/plans/pending/<name>.md`
-- Load the `plan-flow` skill for plan format guidance
-
-### Build mode
-- After completing implementation, archive the plan:
-  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
-  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
-EOF
-
-  cp "$CONFIG_DIR/tools/write-plan.ts" "$dir/.opencode/tools/write-plan.ts"
-  cp "$CONFIG_DIR/tools/list-plans.ts" "$dir/.opencode/tools/list-plans.ts"
-  cp "$CONFIG_DIR/tools/stale-plans.ts" "$dir/.opencode/tools/stale-plans.ts"
-  cp "$CONFIG_DIR/commands/pending.md" "$dir/.opencode/commands/pending.md"
-  cp "$CONFIG_DIR/skills/plan-flow/SKILL.md" "$dir/.opencode/skills/plan-flow/SKILL.md"
-
-  msg "Project install complete → $dir"
+  msg "Install complete → $CONFIG_DIR"
+  info "  To install managed config (root, unoverridable):"
+  info "    sudo $CONFIG_DIR/sudo-managed.sh"
 }
 
 uninstall_all() {
   warn "Uninstalling plan-it..."
 
-  for f in "$CONFIG_DIR/opencode.json" "$CONFIG_DIR/AGENTS.md" "$CONFIG_DIR/tools/write-plan.ts" "$CONFIG_DIR/tools/list-plans.ts" "$CONFIG_DIR/tools/stale-plans.ts" "$CONFIG_DIR/commands/pending.md" "$CONFIG_DIR/skills/plan-flow/SKILL.md"; do
+  for f in "$CONFIG_DIR/opencode.json" "$CONFIG_DIR/AGENTS.md" \
+    "$CONFIG_DIR/tools/write-plan.ts" "$CONFIG_DIR/tools/list-plans.ts" \
+    "$CONFIG_DIR/tools/stale-plans.ts" \
+    "$CONFIG_DIR/commands/pending.md" "$CONFIG_DIR/sudo-managed.sh"; do
     if [ -f "$f" ]; then
       rm "$f"
       info "  Removed: $f"
     fi
   done
 
+  rm -rf "$CONFIG_DIR/skills" 2>/dev/null || true
   rmdir "$CONFIG_DIR/tools" 2>/dev/null || true
   rmdir "$CONFIG_DIR/commands" 2>/dev/null || true
-  rmdir "$CONFIG_DIR/skills/plan-flow" 2>/dev/null || true
-  rmdir "$CONFIG_DIR/skills" 2>/dev/null || true
+  rm -rf "$HOME/.agents/plans" 2>/dev/null || true
 
-  msg "Global uninstall complete"
+  if [ -f /etc/opencode/opencode.json ]; then
+    warn "  Note: /etc/opencode/opencode.json (managed) must be removed manually (sudo)"
+  fi
+
+  msg "Uninstall complete"
 }
 
 show_status() {
@@ -372,10 +223,8 @@ show_status() {
   echo ""
 
   local all_ok=true
-  local has_list_plans=false
-  local has_pending_cmd=false
 
-  for f in "opencode.json" "AGENTS.md" "tools/write-plan.ts" "skills/plan-flow/SKILL.md"; do
+  for f in "opencode.json" "AGENTS.md" "commands/pending.md" "sudo-managed.sh"; do
     if [ -f "$CONFIG_DIR/$f" ]; then
       msg "  ✅ $f"
     else
@@ -384,267 +233,44 @@ show_status() {
     fi
   done
 
-  local has_stale_plans=false
-
-  if [ -f "$CONFIG_DIR/tools/list-plans.ts" ]; then
-    msg "  ✅ tools/list-plans.ts"
-    has_list_plans=true
-  else
-    warn "  ⬜ tools/list-plans.ts (optional — not installed)"
-  fi
-
-  if [ -f "$CONFIG_DIR/tools/stale-plans.ts" ]; then
-    msg "  ✅ tools/stale-plans.ts"
-    has_stale_plans=true
-  else
-    warn "  ⬜ tools/stale-plans.ts (optional — not installed)"
-  fi
-
-  if [ -f "$CONFIG_DIR/commands/pending.md" ]; then
-    msg "  ✅ commands/pending.md"
-    has_pending_cmd=true
-  else
-    warn "  ⬜ commands/pending.md (optional — not installed)"
-  fi
+  for f in "tools/list-plans.ts" "tools/stale-plans.ts"; do
+    if [ -f "$CONFIG_DIR/$f" ]; then
+      msg "  ✅ $f"
+    else
+      err "  ❌ $f"
+      all_ok=false
+    fi
+  done
 
   echo ""
   if $all_ok; then
-    if $has_list_plans || $has_pending_cmd || $has_stale_plans; then
-      msg "plan-it is fully installed (with extras)"
-    else
-      msg "plan-it is installed (minimal)"
-    fi
+    msg "plan-it is fully installed"
   else
     err "plan-it is incomplete — run 'install' to fix"
   fi
-  echo ""
-}
 
-install_minimal() {
-  install_global_minimal
-  if [ -n "${2:-}" ]; then
-    install_project_minimal "$2"
+  if [ -f /etc/opencode/opencode.json ]; then
+    msg "  ✅ Managed config at /etc/opencode/opencode.json (unoverridable)"
   fi
-}
-
-install_global_minimal() {
-  msg "Installing plan-it (minimal) globally..."
-
-  mkdir -p "$CONFIG_DIR/tools" "$CONFIG_DIR/skills/plan-flow"
-
-  cat > "$CONFIG_DIR/opencode.json" << 'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "agent": {
-    "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. After writing the plan as formatted markdown in your response, save it to `.agents/plans/pending/<name>.md` using `bash cat << 'EOF' > <path>`. Do NOT use `write-plan` for new plans — its `content` argument displays the full plan in the UI as raw tool arguments, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
-    }
-  }
-}
-EOF
-
-  cat > "$CONFIG_DIR/AGENTS.md" << 'EOF'
-# CRITICAL RULE: Always use the `question` tool
-Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
-
----
-
-# CRITICAL STARTUP RULE
-On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
-2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
-4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
-
----
-
-## Plan-First Workflow
-
-CRITICAL: Always plan before implementing.
-
-### Plan mode
-- Output the plan as formatted markdown in your response (main messages panel), then save it with `bash cat << 'EOF' > .agents/plans/pending/<name>.md`
-- Load the `plan-flow` skill for plan format guidance
-
-### Build mode
-- After completing implementation, archive the plan:
-  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
-  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
-EOF
-
-  cat > "$CONFIG_DIR/tools/write-plan.ts" << 'EOF'
-// ╔══════════════════════════════════════════════════╗
-// ║  DEPRECATED — Use native `write` instead.       ║
-// ║  This tool is kept for backwards compatibility   ║
-// ║  only. New installs use `mkdir -p` + `write`.   ║
-// ╚══════════════════════════════════════════════════╝
-import { mkdir, unlink } from "node:fs/promises"
-import { tool } from "@opencode-ai/plugin"
-
-export default tool({
-  description: "Save or archive a plan file in .agents/plans/",
-  args: {
-    name: tool.schema.string().describe("Plan name used as filename (no .md)"),
-    content: tool.schema.string().describe("Full plan content in markdown"),
-    status: tool.schema.enum(["pending", "completed"]).default("pending").describe("pending = active plan, completed = archived"),
-  },
-  async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const pending = `${base}/.agents/plans/pending/${args.name}.md`
-    const completed = `${base}/.agents/plans/completed/${args.name}.md`
-
-    if (args.status === "completed") {
-      await mkdir(`${base}/.agents/plans/completed`, { recursive: true })
-      const stamped = `${args.content}\n\n---\n**✅ Completed:** ${new Date().toLocaleString()}\n`
-      await Bun.write(completed, stamped)
-      await unlink(pending).catch(() => {})
-      return ""
-    }
-
-    await mkdir(`${base}/.agents/plans/pending`, { recursive: true })
-    await Bun.write(pending, args.content)
-    return ""
-  },
-})
-EOF
-
-  cat > "$CONFIG_DIR/skills/plan-flow/SKILL.md" << 'EOF'
----
-name: plan-flow
-description: Plan-first workflow — create plans using `write-plan` tool (native `write` is blocked in Plan mode's read-only restriction), archive via `edit`+`mv` on completion
----
-
-## Critical rule
-Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
-
-## Plan-First Workflow
-
-Always create a written plan before making code changes.
-
-### How to use
-1. **Clarify task** — If the request is vague about WHAT to build, use the `question` tool to ask task-specific questions. NEVER ask about file paths, storage locations, or plan format — those are always fixed
-2. **Analyze** — Explore the codebase to understand the current state
-3. **Write plan** — Say "Writing plan..." then output the full plan content as **formatted markdown** in your response — it renders in the **main messages panel (center)** with native colors (bold, headings, code blocks). This is the primary way the user sees the plan. Do NOT use `read` on the `.md` file (shows ugly line numbers). Then save the plan file using `bash cat << 'EOF' > .agents/plans/pending/<name>.md` with the plan content as the heredoc. Do NOT use `write-plan` for new plans — its `content` argument displays the full plan in the UI as raw tool arguments, duplicating what should only be in the main messages panel.
-4. **Ask next** — Use the `question` tool to ask the user: implement now (press Tab to switch to Build mode), edit the plan, or cancel
-5. **Editing a plan** — Use the `edit` tool directly on the `.md` file in `.agents/plans/pending/`. OpenCode automatically shows a diff of changes (side-by-side or stacked based on your `diff_style` setting, toggleable with `app_toggle_diffwrap`).
-6. **Archiving** — When implementation is done:
-   1. Use `edit` to prepend `**✅ Completed:** *date/time*` at the top of the plan file
-   2. Use `bash mv` to move it: `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
-
-### Display behavior (OpenCode TUI panels)
-- **Main messages panel (center)** — Plan content appears as formatted markdown when the agent outputs it. File contents also show here when opened via tools.
-- **File viewer (sidebar)** — `write-plan` saves the file here. Shows raw file content.
-- **Diff viewer (right panel)** — `edit` triggers this automatically. Shows changes side-by-side or stacked based on `diff_style` in `tui.json`; toggle between layouts with `app_toggle_diffwrap`.
-
-### Plan format
-Each plan must include:
-- **Goal**: What we're trying to achieve
-- **Approach**: High-level strategy
-- **Files to modify**: Full paths and what changes each needs
-- **Risks**: Potential issues or edge cases
-- **Implementation steps**: Ordered list of concrete steps
-
-### Tool guidance — Plan mode vs Build mode
-| Mode | Tool | Use for | Why |
-|------|------|---------|-----|
-| Plan | `bash cat <<'EOF' > file` | **New plans** | Content in heredoc avoids structured tool-argument display. Writes via shell, not blocked tool. |
-| Plan | `write-plan` | **Archiving** only (completed plans) | Kept for backwards compat; its `content` argument displays plan in UI — don't use for new plans. |
-| Plan | `edit` | **Editing** existing plan `.md` files | Only works on existing files (diff shown) |
-| Plan | `edit` + `bash mv` | **Archiving** completed plans | Prepends timestamp, moves to `completed/` |
-| Build | `write` | **New plans** (if not in Plan mode) | Native write, works outside Plan mode |
-EOF
-
-  msg "Global minimal install complete → $CONFIG_DIR"
-}
-
-install_project_minimal() {
-  local dir="$1"
-  mkdir -p "$dir"
-
-  msg "Installing plan-it (minimal) into project: $dir"
-
-  mkdir -p "$dir/.opencode/tools" "$dir/.opencode/skills/plan-flow" "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
-
-  cat > "$dir/opencode.json" << 'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "agent": {
-    "plan": {
-      "prompt": "You are in Plan mode (read-only). If the request is unclear about the TASK, use the `question` tool to ask clarifying questions about what to build (never about file paths or plan storage — those are fixed). Load the `plan-flow` skill for plan format instructions. After writing the plan as formatted markdown in your response, save it to `.agents/plans/pending/<name>.md` using `bash cat << 'EOF' > <path>`. Do NOT use `write-plan` for new plans — its `content` argument displays the full plan in the UI as raw tool arguments, then use the `question` tool to ask: implement now (press Tab to switch to Build mode), edit the plan, or cancel."
-    }
-  }
-}
-EOF
-
-  cat > "$dir/AGENTS.md" << 'EOF'
-# CRITICAL RULE: Always use the `question` tool
-Whenever you need to ask the user a question or present options, you MUST call the `question` tool. Do NOT ask questions or list options in your own response text.
-
----
-
-# CRITICAL STARTUP RULE
-On EVERY new session, BEFORE responding to the user's first message:
-1. Check `.agents/plans/pending/` — if files exist, use the `question` tool to tell user "You have X pending plans." and ask what to do
-2. Run the `stale-plans` tool to check for abandoned/outdated plans
-3. If stale plans exist: use `question` tool to ask: continue a plan, archive a stale one, or review with `/pending`
-4. If all look current: say "All look current. Type /pending to review."
-5. Only THEN proceed with the user's request. When showing a plan to the user, do NOT use `read` on the `.md` file (shows ugly line numbers). Instead, output the plan as formatted markdown in your chat response — OpenCode renders it with colors natively (bold, headings, code blocks).
-
----
-
-## Plan-First Workflow
-
-CRITICAL: Always plan before implementing.
-
-### Plan mode
-- Output the plan as formatted markdown in your response (main messages panel), then save it with `bash cat << 'EOF' > .agents/plans/pending/<name>.md`
-- Load the `plan-flow` skill for plan format guidance
-
-### Build mode
-- After completing implementation, archive the plan:
-  1. Use `edit` to prepend `**✅ Completed:** *date/time*` to the plan file
-  2. Use `bash mv` to move it from `.agents/plans/pending/` to `.agents/plans/completed/`
-EOF
-
-  cp "$CONFIG_DIR/tools/write-plan.ts" "$dir/.opencode/tools/write-plan.ts"
-  cp "$CONFIG_DIR/skills/plan-flow/SKILL.md" "$dir/.opencode/skills/plan-flow/SKILL.md"
-
-  msg "Project minimal install complete → $dir"
+  echo ""
 }
 
 usage() {
-  echo "Usage: $0 <command> [project-dir]"
+  echo "Usage: $0 <command>"
   echo ""
   echo "Commands:"
-  echo "  install               Install plan-it globally (full)"
-  echo "  install <project>     Install globally + into project directory (full)"
-  echo "  minimal               Install plan-it globally (without list-plans tool / pending command)"
-  echo "  minimal <project>     Install globally + into project directory (minimal)"
-  echo "  uninstall             Remove plan-it from global config"
-  echo "  status                Show installed files"
+  echo "  install     Install plan-it globally"
+  echo "  uninstall   Remove plan-it from global config"
+  echo "  status      Show installed files"
+  echo "  help        Show this help"
   echo ""
-  echo "Examples:"
-  echo "  $0 install"
-  echo "  $0 install ./my-project"
-  echo "  $0 minimal"
-  echo "  $0 minimal ./my-project"
-  echo "  $0 uninstall"
-  echo "  $0 status"
+  echo "After install, run: sudo \$(dirname \$0)/sudo-managed.sh"
+  echo "to make config unoverridable by projects."
 }
 
 case "${1:-help}" in
   install)
     install_global
-    if [ -n "${2:-}" ]; then
-      install_project "$2"
-    fi
-    ;;
-  minimal)
-    install_global_minimal
-    if [ -n "${2:-}" ]; then
-      install_project_minimal "$2"
-    fi
     ;;
   uninstall)
     uninstall_all
