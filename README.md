@@ -6,8 +6,8 @@ AI workflow tools for OpenCode.
 **doc-it** — self-maintaining docs.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it | bash
 ```
 
 ---
@@ -31,18 +31,18 @@ Use for plan-first development with task tracking and pending plan recovery.
 Tell the agent:
 
 ```  
-   Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh
+   Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it
 ```
 
 Or run:
 ```
-  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it | bash
 ```
 
 Into a specific project:
 
 ```
-  curl -fsSL ...install-plan-it.sh | bash -s -- install ./my-project
+  curl -fsSL ...install-plan-it | bash -s -- install ./my-project
 ```
 
 ### doc-it
@@ -51,17 +51,17 @@ Use for self-maintaining docs, AI project memory, and automatic changelogs.
 
 Tell the agent:
 ```
-  Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh
+  Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it
 ```
 Or run:
 ```
-  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it | bash
 ```
 
 Initialize a project with the full pipeline:
 
 ```
-  curl -fsSL ...install-doc-it.sh | bash -s -- install ./my-project
+  curl -fsSL ...install-doc-it | bash -s -- install ./my-project
 ```
 
 ### Both (recommended for larger AI-native projects)

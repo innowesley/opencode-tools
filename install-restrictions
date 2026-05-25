@@ -17,7 +17,7 @@ CONFIG="$HOME/.config/opencode/opencode.json"
 check_prereqs() {
   if [ ! -f "$CONFIG" ]; then
     err "Config not found: $CONFIG"
-    err "Run install-plan-it.sh first."
+    err "Run install-plan-it first."
     exit 1
   fi
   if ! command -v jq &>/dev/null; then
