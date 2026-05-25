@@ -89,6 +89,121 @@ export default tool({
 })
 EOF
 
+  cat > "$CONFIG_DIR/tools/related-plans.ts" << 'EOF'
+import { readdir, readFile, stat } from "node:fs/promises"
+import { tool } from "@opencode-ai/plugin"
+
+const STOP_WORDS = new Set([
+  "the", "and", "for", "with", "this", "that", "from", "into", "onto",
+  "upon", "plan", "task", "item", "add", "update", "remove", "fix",
+  "implement", "make", "set", "get", "put", "use", "using", "allow",
+])
+
+function extractTopics(name: string, content: string): string[] {
+  const words = new Set<string>()
+
+  name.split(/[-_\s]+/).forEach(w => {
+    const lower = w.toLowerCase().replace(/[^a-z0-9]/g, "")
+    if (lower.length >= 3 && !STOP_WORDS.has(lower)) words.add(lower)
+  })
+
+  const headingMatch = content.match(/^#+\s+(.+)/m)
+  if (headingMatch) {
+    headingMatch[1].split(/[-_\s]+/).forEach(w => {
+      const lower = w.toLowerCase().replace(/[^a-z0-9]/g, "")
+      if (lower.length >= 3 && !STOP_WORDS.has(lower)) words.add(lower)
+    })
+  }
+
+  return [...words]
+}
+
+function scoreMatch(targetTopics: string[], candidateName: string, candidateContent: string): number {
+  const candidateTopics = extractTopics(candidateName, candidateContent)
+  let score = 0
+  for (const t of targetTopics) {
+    if (candidateTopics.includes(t)) score += 1
+  }
+  return score
+}
+
+export default tool({
+  description: "Find plans related by topic keywords (filename + first heading overlap)",
+  args: {
+    planName: tool.schema.string().describe("Plan filename (without .md) to analyze for related plans"),
+  },
+  async execute(args, context) {
+    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const pendingDir = `${base}/.agents/plans/pending`
+    const completedDir = `${base}/.agents/plans/completed`
+
+    const planPath = `${pendingDir}/${args.planName}.md`
+    let planContent: string
+    try {
+      planContent = await readFile(planPath, "utf-8")
+    } catch {
+      return JSON.stringify({ error: `Plan '${args.planName}' not found in pending/` })
+    }
+
+    const topics = extractTopics(args.planName, planContent)
+
+    async function scanDir(dir: string): Promise<{ name: string; matchScore: number }[]> {
+      let files: string[]
+      try {
+        files = await readdir(dir)
+      } catch {
+        return []
+      }
+
+      const results: { name: string; matchScore: number; mtimeMs?: number }[] = []
+
+      for (const file of files) {
+        if (!file.endsWith(".md")) continue
+        const name = file.replace(/\.md$/, "")
+        if (name === args.planName) continue
+
+        const fullPath = `${dir}/${file}`
+        let content: string
+        let mtimeMs: number
+        try {
+          content = await readFile(fullPath, "utf-8")
+          const s = await stat(fullPath)
+          mtimeMs = s.mtimeMs
+        } catch {
+          continue
+        }
+
+        const score = scoreMatch(topics, name, content)
+        if (score > 0) {
+          results.push({ name, matchScore: score, mtimeMs })
+        }
+      }
+
+      results.sort((a, b) => {
+        if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore
+        return (b.mtimeMs ?? 0) - (a.mtimeMs ?? 0)
+      })
+
+      return results.map(r => ({ name: r.name, matchScore: r.matchScore }))
+    }
+
+    const [relatedPending, allRelatedCompleted] = await Promise.all([
+      scanDir(pendingDir),
+      scanDir(completedDir),
+    ])
+
+    const relatedCompleted = allRelatedCompleted.slice(0, 3)
+
+    return JSON.stringify({
+      analyzedPlan: args.planName,
+      topics,
+      relatedPending,
+      relatedCompleted,
+    })
+  },
+})
+EOF
+
   cat > "$CONFIG_DIR/tools/stale-plans.ts" << 'EOF'
 import { readdir, readFile, stat } from "node:fs/promises"
 import { tool } from "@opencode-ai/plugin"
@@ -155,21 +270,41 @@ EOF
 description: List all pending plans in .agents/plans/pending/
 ---
 
-List all `.md` files in `.agents/plans/pending/`. Show filename and first heading. Present numbered.
+1. List all `.md` files in `.agents/plans/pending/`. Show filename and first heading. Present numbered.
 
-If none, say "No pending plans." and stop.
+2. If none, say "No pending plans." and stop.
 
-If any, ask:
-- "Type the **number** to continue that plan"
-- "Or type `archive <number>` to archive as outdated/superseded"
+3. If any, ask:
+   - "Type the **number** to continue that plan"
+   - "Type **info <number>** to see related plans and context"
+   - "Or type **archive <number>** to archive as outdated/superseded"
 
-If user picks a number, proceed with that plan.
+4. If user picks `info <number>`:
+   - Read the plan content
+   - Call the `related-plans` tool with `planName` set to the chosen plan name
+   - Display the result clearly:
+     ```
+     📋 Plan: <plan-name>
+     🏷️  Topics: <topic1>, <topic2>, ...
 
-If `archive <number>`:
-1. Read full content of that plan `.md`
-2. Use `edit` to prepend `**Archived as outdated/superseded**`
-3. Run `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
-4. Confirm
+     📌 Related Pending Plans (<count>):
+       - <name> (matches: <score>)
+       ...
+
+     📁 Related Completed Plans (most recent 3):
+       - <name> (matches: <score>)
+       ...
+     ```
+   - Ask: "Continue this plan? Type the **number** or **n** to go back"
+
+5. If user picks a number (directly or after info):
+   - Proceed with that plan
+
+6. If `archive <number>`:
+   1. Read full content of that plan `.md`
+   2. Use `edit` to prepend `**Archived as outdated/superseded**`
+   3. Run `mv .agents/plans/pending/name.md .agents/plans/completed/name.md`
+   4. Confirm
 EOF
 
   cat > "$CONFIG_DIR/sudo-managed.sh" << 'EOF'
@@ -197,7 +332,7 @@ uninstall_all() {
 
   for f in "$CONFIG_DIR/opencode.json" "$CONFIG_DIR/AGENTS.md" \
     "$CONFIG_DIR/tools/write-plan.ts" "$CONFIG_DIR/tools/list-plans.ts" \
-    "$CONFIG_DIR/tools/stale-plans.ts" \
+    "$CONFIG_DIR/tools/stale-plans.ts" "$CONFIG_DIR/tools/related-plans.ts" \
     "$CONFIG_DIR/commands/pending.md" "$CONFIG_DIR/sudo-managed.sh"; do
     if [ -f "$f" ]; then
       rm "$f"
@@ -233,7 +368,7 @@ show_status() {
     fi
   done
 
-  for f in "tools/list-plans.ts" "tools/stale-plans.ts"; do
+  for f in "tools/list-plans.ts" "tools/stale-plans.ts" "tools/related-plans.ts"; do
     if [ -f "$CONFIG_DIR/$f" ]; then
       msg "  ✅ $f"
     else
