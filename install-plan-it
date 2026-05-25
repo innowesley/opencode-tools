@@ -49,11 +49,13 @@ On ANY task:
 
 Execute ONLY after: "execute", "proceed", "continue", or explicit approval.
 
+Note: The `write` tool is permitted for `.opencode/plans/**/*.md` and `.agents/plans/**/*.md` in Plan mode. All bash commands (`mv`, `rm`) run in Build mode only — they are the first action after the mode switch.
+
 ---
 
-## ✅ Execution Rules
+## ✅ Execution Rules (entirely in Build mode)
 
-After user approves:
+After user approves (now in Build mode):
 1. `mv .opencode/plans/<task>.md .agents/plans/pending/<task>.md` (NEVER use `cp`)
 2. Execute the plan, updating `.agents/plans/pending/<task>.md` continuously
 3. Mark steps [x] as completed
@@ -69,37 +71,41 @@ EOF
 import { readdir } from "node:fs/promises"
 import { tool } from "@opencode-ai/plugin"
 
-const STATUS_DIRS: Record<string, string> = {
-  drafts: ".opencode/plans",
-  pending: ".agents/plans/pending",
-  completed: ".agents/plans/completed",
+const STATUS_DIRS: Record<string, string[]> = {
+  drafts: [".opencode/plans"],
+  pending: [".agents/plans/pending"],
+  active: [".opencode/plans", ".agents/plans/pending"],
+  completed: [".agents/plans/completed"],
+}
+
+async function readPlans(base: string, dir: string): Promise<string[]> {
+  let files: string[]
+  try {
+    files = await readdir(`${base}/${dir}`)
+  } catch {
+    return []
+  }
+  return files
+    .filter(f => f.endsWith(".md"))
+    .map(f => f.replace(/\.md$/, ""))
 }
 
 export default tool({
-  description: "List plan files by status",
+  description: "List plan files by status (default: active = drafts + pending)",
   args: {
-    status: tool.schema.enum(["drafts", "pending", "completed"]).default("pending").describe("drafts = .opencode/plans/, pending = .agents/plans/pending/, completed = .agents/plans/completed/"),
+    status: tool.schema.enum(["drafts", "pending", "active", "completed"]).default("active").describe("drafts = .opencode/plans/, pending = .agents/plans/pending/, active = both, completed = archived"),
   },
   async execute(args, context) {
     const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const subdir = STATUS_DIRS[args.status]
-    if (!subdir) {
+    const dirs = STATUS_DIRS[args.status]
+    if (!dirs) {
       return JSON.stringify({ count: 0, plans: [], error: `Unknown status: ${args.status}` })
     }
-    const dir = `${base}/${subdir}`
 
-    let files: string[]
-    try {
-      files = await readdir(dir)
-    } catch {
-      return JSON.stringify({ count: 0, plans: [] })
-    }
+    const allPlans = await Promise.all(dirs.map(d => readPlans(base, d)))
+    const plans = [...new Set(allPlans.flat())]
 
-    const plans = files
-      .filter(f => f.endsWith(".md"))
-      .map(f => f.replace(/\.md$/, ""))
-
-    return JSON.stringify({ count: plans.length, plans, status: args.status, dir: subdir })
+    return JSON.stringify({ count: plans.length, plans, status: args.status })
   },
 })
 EOF
