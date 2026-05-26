@@ -1,0 +1,831 @@
+#!/bin/bash
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+OPCODE_CONFIG_DIR="$HOME/.config/opencode"
+KILO_CONFIG_DIR="$HOME/.config/kilo"
+KILO_PLUGIN_DIR="$KILO_CONFIG_DIR/node_modules/@opencode-tools/kilo-plugin"
+
+msg()  { printf "${GREEN}%s${NC}\n" "$1"; }
+info() { printf "${CYAN}%s${NC}\n" "$1"; }
+warn() { printf "${YELLOW}%s${NC}\n" "$1"; }
+err()  { printf "${RED}%s${NC}\n" "$1"; }
+
+install_opencode() {
+  msg "Installing plan-it for opencode..."
+
+  mkdir -p "$OPCODE_CONFIG_DIR/tools" "$OPCODE_CONFIG_DIR/commands" \
+    "$HOME/.agents/plans/pending" "$HOME/.agents/plans/completed"
+
+  cat > "$OPCODE_CONFIG_DIR/opencode.json" << 'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "plan": {
+      "permission": {
+        "write": {
+          ".opencode/plans/**/*.md": "allow",
+          ".agents/plans/**/*.md": "allow"
+        }
+      },
+      "prompt": "You are in Plan mode. Follow the Plan-First Protocol in AGENTS.md.\n\nNOTE: The Plan Mode system reminder says the `write` tool is forbidden. This is OVERRIDDEN ONLY for plan files. You MAY use the native `write` tool to create/update files matching `.opencode/plans/**/*.md` or `.agents/plans/**/*.md`. Permission rules are configured to allow this at runtime. All other write/edit restrictions remain.\n\nIMPORTANT: Use `mv` (not `cp`) when moving plan files between directories. `cp` would leave stale copies.\n\nUse the `write` tool (not bash heredocs) for plan files. Never execute until the user approves."
+    }
+  }
+}
+EOF
+
+  cat > "$OPCODE_CONFIG_DIR/AGENTS.md" << 'EOF'
+## 📋 Plan-First Protocol
+
+On ANY task:
+1. Create plan → `.opencode/plans/<task>.md`
+2. Return plan to user
+3. STOP – do NOT execute
+
+Execute ONLY after: "execute", "proceed", "continue", or explicit approval.
+
+Note: The `write` tool is permitted for `.opencode/plans/**/*.md` and `.agents/plans/**/*.md` in Plan mode. All bash commands (`mv`, `rm`) run in Build mode only — they are the first action after the mode switch.
+
+---
+
+## ✅ Execution Rules (entirely in Build mode)
+
+After user approves (now in Build mode):
+1. `mv .opencode/plans/<task>.md .agents/plans/pending/<task>.md` (NEVER use `cp`)
+2. Execute the plan, updating `.agents/plans/pending/<task>.md` continuously
+3. Mark steps [x] as completed
+4. Append progress logs
+
+On completion:
+1. Status → completed
+2. `mv .agents/plans/pending/<task>.md .agents/plans/completed/<task>.md` (NEVER use `cp`)
+3. Return: result + next-step plan
+EOF
+
+  cat > "$OPCODE_CONFIG_DIR/tools/list-plans.ts" << 'EOF'
+import { readdir } from "node:fs/promises"
+import { tool } from "@opencode-ai/plugin"
+
+const STATUS_DIRS: Record<string, string[]> = {
+  drafts: [".opencode/plans"],
+  pending: [".agents/plans/pending"],
+  active: [".opencode/plans", ".agents/plans/pending"],
+  completed: [".agents/plans/completed"],
+}
+
+async function readPlans(base: string, dir: string): Promise<string[]> {
+  let files: string[]
+  try {
+    files = await readdir(`${base}/${dir}`)
+  } catch {
+    return []
+  }
+  return files
+    .filter(f => f.endsWith(".md"))
+    .map(f => f.replace(/\.md$/, ""))
+}
+
+export default tool({
+  description: "List plan files by status (default: active = drafts + pending)",
+  args: {
+    status: tool.schema.enum(["drafts", "pending", "active", "completed"]).default("active").describe("drafts = .opencode/plans/, pending = .agents/plans/pending/, active = both, completed = archived"),
+  },
+  async execute(args, context) {
+    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const dirs = STATUS_DIRS[args.status]
+    if (!dirs) {
+      return JSON.stringify({ count: 0, plans: [], error: `Unknown status: ${args.status}` })
+    }
+
+    const allPlans = await Promise.all(dirs.map(d => readPlans(base, d)))
+    const plans = [...new Set(allPlans.flat())]
+
+    return JSON.stringify({ count: plans.length, plans, status: args.status })
+  },
+})
+EOF
+
+  cat > "$OPCODE_CONFIG_DIR/tools/related-plans.ts" << 'EOF'
+import { readdir, readFile, stat } from "node:fs/promises"
+import { tool } from "@opencode-ai/plugin"
+
+const STOP_WORDS = new Set([
+  "the", "and", "for", "with", "this", "that", "from", "into", "onto",
+  "upon", "plan", "task", "item", "add", "update", "remove", "fix",
+  "implement", "make", "set", "get", "put", "use", "using", "allow",
+])
+
+function extractTopics(name: string, content: string): string[] {
+  const words = new Set<string>()
+
+  name.split(/[-_\s]+/).forEach(w => {
+    const lower = w.toLowerCase().replace(/[^a-z0-9]/g, "")
+    if (lower.length >= 3 && !STOP_WORDS.has(lower)) words.add(lower)
+  })
+
+  const headingMatch = content.match(/^#+\s+(.+)/m)
+  if (headingMatch) {
+    headingMatch[1].split(/[-_\s]+/).forEach(w => {
+      const lower = w.toLowerCase().replace(/[^a-z0-9]/g, "")
+      if (lower.length >= 3 && !STOP_WORDS.has(lower)) words.add(lower)
+    })
+  }
+
+  return [...words]
+}
+
+function scoreMatch(targetTopics: string[], candidateName: string, candidateContent: string): number {
+  const candidateTopics = extractTopics(candidateName, candidateContent)
+  let score = 0
+  for (const t of targetTopics) {
+    if (candidateTopics.includes(t)) score += 1
+  }
+  return score
+}
+
+export default tool({
+  description: "Find plans related by topic keywords (filename + first heading overlap)",
+  args: {
+    planName: tool.schema.string().describe("Plan filename (without .md) to analyze for related plans"),
+  },
+  async execute(args, context) {
+    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const draftsDir = `${base}/.opencode/plans`
+    const pendingDir = `${base}/.agents/plans/pending`
+    const completedDir = `${base}/.agents/plans/completed`
+
+    let planContent: string
+    let planSource: string
+    for (const [dir, label] of [[draftsDir, "drafts"], [pendingDir, "pending"] as const]) {
+      try {
+        planContent = await readFile(`${dir}/${args.planName}.md`, "utf-8")
+        planSource = label
+        break
+      } catch {
+        continue
+      }
+    }
+    if (!planContent) {
+      return JSON.stringify({ error: `Plan '${args.planName}' not found in drafts/ or pending/` })
+    }
+
+    const topics = extractTopics(args.planName, planContent)
+
+    async function scanDir(dir: string): Promise<{ name: string; matchScore: number }[]> {
+      let files: string[]
+      try {
+        files = await readdir(dir)
+      } catch {
+        return []
+      }
+
+      const results: { name: string; matchScore: number; mtimeMs?: number }[] = []
+
+      for (const file of files) {
+        if (!file.endsWith(".md")) continue
+        const name = file.replace(/\.md$/, "")
+        if (name === args.planName) continue
+
+        const fullPath = `${dir}/${file}`
+        let content: string
+        let mtimeMs: number
+        try {
+          content = await readFile(fullPath, "utf-8")
+          const s = await stat(fullPath)
+          mtimeMs = s.mtimeMs
+        } catch {
+          continue
+        }
+
+        const score = scoreMatch(topics, name, content)
+        if (score > 0) {
+          results.push({ name, matchScore: score, mtimeMs })
+        }
+      }
+
+      results.sort((a, b) => {
+        if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore
+        return (b.mtimeMs ?? 0) - (a.mtimeMs ?? 0)
+      })
+
+      return results.map(r => ({ name: r.name, matchScore: r.matchScore }))
+    }
+
+    const [relatedDrafts, relatedPending, allRelatedCompleted] = await Promise.all([
+      scanDir(draftsDir),
+      scanDir(pendingDir),
+      scanDir(completedDir),
+    ])
+
+    const relatedCompleted = allRelatedCompleted.slice(0, 3)
+
+    return JSON.stringify({
+      analyzedPlan: args.planName,
+      planSource,
+      topics,
+      relatedDrafts,
+      relatedPending,
+      relatedCompleted,
+    })
+  },
+})
+EOF
+
+  cat > "$OPCODE_CONFIG_DIR/tools/stale-plans.ts" << 'EOF'
+import { readdir, readFile, stat } from "node:fs/promises"
+import { tool } from "@opencode-ai/plugin"
+
+const DAY_MS = 86400000
+
+async function checkDirStaleness(dir: string, label: string, maxAgeDays: number): Promise<{ stale: any[]; healthy: string[]; count: number }> {
+  const stale: any[] = []
+  const healthy: string[] = []
+
+  let files: string[]
+  try {
+    files = await readdir(dir)
+  } catch {
+    return { count: 0, stale: [], healthy: [] }
+  }
+
+  const planFiles = files.filter(f => f.endsWith(".md"))
+  if (planFiles.length === 0) {
+    return { count: 0, stale: [], healthy: [] }
+  }
+
+  const now = Date.now()
+
+  for (const file of planFiles) {
+    const fullPath = `${dir}/${file}`
+    const reasons: string[] = []
+
+    let mtimeMs: number
+    try {
+      const s = await stat(fullPath)
+      mtimeMs = s.mtimeMs
+    } catch {
+      continue
+    }
+
+    const ageDays = (now - mtimeMs) / DAY_MS
+    if (ageDays > maxAgeDays) {
+      reasons.push(`Plan is ${Math.round(ageDays)} days old (max: ${maxAgeDays})`)
+    }
+
+    const name = file.replace(/\.md$/, "")
+    if (reasons.length > 0) {
+      stale.push({ name, ageDays: Math.round(ageDays), dir: label, reasons })
+    } else {
+      healthy.push(`${label}/${name}`)
+    }
+  }
+
+  return { count: planFiles.length, stale, healthy }
+}
+
+export default tool({
+  description: "Check pending plans for staleness",
+  args: {
+    maxAgeDays: tool.schema.number().default(7).describe("Max age in days before stale"),
+  },
+  async execute(args, context) {
+    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const [draftsResult, pendingResult] = await Promise.all([
+      checkDirStaleness(`${base}/.opencode/plans`, "drafts", args.maxAgeDays),
+      checkDirStaleness(`${base}/.agents/plans/pending`, "pending", args.maxAgeDays),
+    ])
+
+    return JSON.stringify({
+      count: draftsResult.count + pendingResult.count,
+      stale: [...draftsResult.stale, ...pendingResult.stale],
+      healthy: [...draftsResult.healthy, ...pendingResult.healthy],
+    })
+  },
+})
+EOF
+
+  cat > "$OPCODE_CONFIG_DIR/commands/pending.md" << 'EOF'
+---
+description: List all drafts and pending plans
+---
+
+1. List all `.md` files in:
+   - **Drafts** (not yet approved): `.opencode/plans/`
+   - **In progress** (approved, executing): `.agents/plans/pending/`
+   Show filename and first heading for each. Present numbered.
+
+2. If both are empty, say "No plans found." and stop.
+
+3. Display format:
+   ```
+   📄 Drafts (.opencode/plans/):
+     1. <name> — <heading>
+     ...
+
+   🚀 In Progress (.agents/plans/pending/):
+     4. <name> — <heading>
+     ...
+   ```
+
+4. If only one section has items, just show that section.
+
+5. Ask:
+   - "Type the **number** to continue that plan"
+   - "Type **info <number>** to see related plans and context"
+   - "Type **archive <number>** to archive in-progress plan as outdated/superseded"
+
+6. If user picks `info <number>`:
+   - Read the plan content
+   - Call the `related-plans` tool with `planName` set to the chosen plan name
+   - Display the result clearly:
+     ```
+     📋 Plan: <plan-name>
+     🏷️  Topics: <topic1>, <topic2>, ...
+
+     📌 Related Draft Plans (<count>):
+       - <name> (matches: <score>)
+       ...
+
+     📁 Related In-Progress Plans (<count>):
+       - <name> (matches: <score>)
+       ...
+
+     📁 Related Completed Plans (most recent 3):
+       - <name> (matches: <score>)
+       ...
+     ```
+   - Ask: "Continue this plan? Type the **number** or **n** to go back"
+
+7. If user picks a number (directly or after info):
+   - If it's a draft: ask "Approve this plan? (y/n)". If yes, run `mv .opencode/plans/<name>.md .agents/plans/pending/<name>.md` then proceed with execution.
+   - If it's in progress: proceed with that plan
+
+8. If `archive <number>`:
+   1. Read full content of that plan `.md`
+   2. Use `edit` to prepend `**Archived as outdated/superseded**`
+   3. Run `mv .agents/plans/pending/<name>.md .agents/plans/completed/<name>.md` (NEVER `cp`)
+   4. Confirm
+EOF
+
+  cat > "$OPCODE_CONFIG_DIR/sudo-managed.sh" << 'EOF'
+#!/bin/bash
+# Install managed config at /etc/opencode/ (root-owned, unoverridable)
+set -euo pipefail
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run as root (sudo)." >&2
+  exit 1
+fi
+mkdir -p /etc/opencode
+cp /home/kunta/.config/opencode/opencode.json /etc/opencode/opencode.json
+chmod 644 /etc/opencode/opencode.json
+echo "Managed config installed at /etc/opencode/opencode.json"
+EOF
+  chmod +x "$OPCODE_CONFIG_DIR/sudo-managed.sh"
+
+  msg "Plan-it (opencode) install complete → $OPCODE_CONFIG_DIR"
+  info "  To install managed config (root, unoverridable):"
+  info "    sudo $OPCODE_CONFIG_DIR/sudo-managed.sh"
+}
+
+install_kilo() {
+  msg "Installing plan-it for Kilo CLI..."
+
+  KILO_BIN_VERSION=$(kilo --version 2>/dev/null || echo "unknown")
+  KILO_PLUGIN_VERSION=$(cat "$KILO_CONFIG_DIR/node_modules/@kilocode/plugin/package.json" 2>/dev/null \
+    | grep '"version"' | head -1 | sed 's/.*: "*\([^"]*\)".*/\1/' || echo "unknown")
+  msg "Detected Kilo binary v${KILO_BIN_VERSION} with @kilocode/plugin v${KILO_PLUGIN_VERSION}"
+
+  mkdir -p "$KILO_PLUGIN_DIR/dist"
+
+  if [ ! -f "$KILO_PLUGIN_DIR/package.json" ]; then
+    cat > "$KILO_PLUGIN_DIR/package.json" << 'PKGEOF'
+{
+  "name": "@opencode-tools/kilo-plugin",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "dependencies": {
+    "@kilocode/plugin": ">=7.1.0"
+  }
+}
+PKGEOF
+  fi
+
+  if [ ! -f "$KILO_PLUGIN_DIR/dist/index.js" ]; then
+    cat > "$KILO_PLUGIN_DIR/dist/index.js" << 'IDXEOF'
+let PlanItPlugin;
+try { const m = await import("./plan-it.js"); PlanItPlugin = m.PlanItPlugin; } catch {}
+let DocItPlugin;
+try { const m = await import("./doc-it.js"); DocItPlugin = m.DocItPlugin; } catch {}
+export { PlanItPlugin, DocItPlugin }
+IDXEOF
+  fi
+
+  cat > "$KILO_PLUGIN_DIR/dist/plan-it.js" << 'TOOLEOF'
+import { readdir, readFile, stat } from "node:fs/promises"
+import { tool } from "@kilocode/plugin"
+
+const STATUS_DIRS = {
+  drafts: [".kilo/plans"],
+  pending: [".agents/plans/pending"],
+  active: [".kilo/plans", ".agents/plans/pending"],
+  completed: [".agents/plans/completed"],
+}
+
+async function readPlans(base, dir) {
+  let files
+  try {
+    files = await readdir(`${base}/${dir}`)
+  } catch {
+    return []
+  }
+  return files.filter(f => f.endsWith(".md")).map(f => f.replace(/\.md$/, ""))
+}
+
+const STOP_WORDS = new Set([
+  "the", "and", "for", "with", "this", "that", "from", "into", "onto",
+  "upon", "plan", "task", "item", "add", "update", "remove", "fix",
+  "implement", "make", "set", "get", "put", "use", "using", "allow",
+])
+
+function extractTopics(name, content) {
+  const words = new Set()
+  name.split(/[-_\s]+/).forEach(w => {
+    const lower = w.toLowerCase().replace(/[^a-z0-9]/g, "")
+    if (lower.length >= 3 && !STOP_WORDS.has(lower)) words.add(lower)
+  })
+  const headingMatch = content.match(/^#+\s+(.+)/m)
+  if (headingMatch) {
+    headingMatch[1].split(/[-_\s]+/).forEach(w => {
+      const lower = w.toLowerCase().replace(/[^a-z0-9]/g, "")
+      if (lower.length >= 3 && !STOP_WORDS.has(lower)) words.add(lower)
+    })
+  }
+  return [...words]
+}
+
+function scoreMatch(targetTopics, candidateName, candidateContent) {
+  const candidateTopics = extractTopics(candidateName, candidateContent)
+  let score = 0
+  for (const t of targetTopics) {
+    if (candidateTopics.includes(t)) score += 1
+  }
+  return score
+}
+
+const DAY_MS = 86400000
+
+async function checkDirStaleness(dir, label, maxAgeDays) {
+  const stale = []
+  const healthy = []
+  let files
+  try {
+    files = await readdir(dir)
+  } catch {
+    return { count: 0, stale: [], healthy: [] }
+  }
+  const planFiles = files.filter(f => f.endsWith(".md"))
+  if (planFiles.length === 0) return { count: 0, stale: [], healthy: [] }
+  const now = Date.now()
+  for (const file of planFiles) {
+    const fullPath = `${dir}/${file}`
+    const reasons = []
+    let mtimeMs
+    try {
+      const s = await stat(fullPath)
+      mtimeMs = s.mtimeMs
+    } catch { continue }
+    const ageDays = (now - mtimeMs) / DAY_MS
+    if (ageDays > maxAgeDays) reasons.push(`Plan is ${Math.round(ageDays)} days old (max: ${maxAgeDays})`)
+    const name = file.replace(/\.md$/, "")
+    if (reasons.length > 0) stale.push({ name, ageDays: Math.round(ageDays), dir: label, reasons })
+    else healthy.push(`${label}/${name}`)
+  }
+  return { count: planFiles.length, stale, healthy }
+}
+
+export const PlanItPlugin = async (ctx) => {
+  return {
+    tool: {
+      "list-plans": tool({
+        description: "List plan files by status (drafts, pending, active, completed)",
+        args: {
+          status: tool.schema.enum(["drafts", "pending", "active", "completed"]).default("active").describe("drafts = .kilo/plans/, pending = .agents/plans/pending/, active = both, completed = .agents/plans/completed/"),
+        },
+        async execute(args, context) {
+          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const dirs = STATUS_DIRS[args.status]
+          if (!dirs) return JSON.stringify({ count: 0, plans: [], error: `Unknown status: ${args.status}` })
+          const allPlans = await Promise.all(dirs.map(d => readPlans(base, d)))
+          const plans = [...new Set(allPlans.flat())]
+          return JSON.stringify({ count: plans.length, plans, status: args.status })
+        },
+      }),
+      "related-plans": tool({
+        description: "Find plans related by topic keywords (filename + first heading overlap)",
+        args: {
+          planName: tool.schema.string().describe("Plan filename (without .md) to analyze for related plans"),
+        },
+        async execute(args, context) {
+          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const draftsDir = `${base}/.kilo/plans`
+          const pendingDir = `${base}/.agents/plans/pending`
+          const completedDir = `${base}/.agents/plans/completed`
+          let planContent, planSource
+          for (const [dir, label] of [[draftsDir, "drafts"], [pendingDir, "pending"]]) {
+            try { planContent = await readFile(`${dir}/${args.planName}.md`, "utf-8"); planSource = label; break } catch { continue }
+          }
+          if (!planContent) return JSON.stringify({ error: `Plan '${args.planName}' not found in drafts/ or pending/` })
+          const topics = extractTopics(args.planName, planContent)
+          async function scanDir(dir) {
+            let files
+            try { files = await readdir(dir) } catch { return [] }
+            const results = []
+            for (const file of files) {
+              if (!file.endsWith(".md")) continue
+              const name = file.replace(/\.md$/, "")
+              if (name === args.planName) continue
+              let content, mtimeMs
+              try { content = await readFile(`${dir}/${file}`, "utf-8"); const s = await stat(`${dir}/${file}`); mtimeMs = s.mtimeMs } catch { continue }
+              const score = scoreMatch(topics, name, content)
+              if (score > 0) results.push({ name, matchScore: score, mtimeMs })
+            }
+            results.sort((a, b) => { if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore; return (b.mtimeMs ?? 0) - (a.mtimeMs ?? 0) })
+            return results.map(r => ({ name: r.name, matchScore: r.matchScore }))
+          }
+          const [relatedDrafts, relatedPending, allRelatedCompleted] = await Promise.all([scanDir(draftsDir), scanDir(pendingDir), scanDir(completedDir)])
+          const relatedCompleted = allRelatedCompleted.slice(0, 3)
+          return JSON.stringify({ analyzedPlan: args.planName, planSource, topics, relatedDrafts, relatedPending, relatedCompleted })
+        },
+      }),
+      "stale-plans": tool({
+        description: "Check pending plans for staleness",
+        args: { maxAgeDays: tool.schema.number().default(7).describe("Max age in days before stale") },
+        async execute(args, context) {
+          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const [draftsResult, pendingResult] = await Promise.all([
+            checkDirStaleness(`${base}/.kilo/plans`, "drafts", args.maxAgeDays),
+            checkDirStaleness(`${base}/.agents/plans/pending`, "pending", args.maxAgeDays),
+          ])
+          return JSON.stringify({ count: draftsResult.count + pendingResult.count, stale: [...draftsResult.stale, ...pendingResult.stale], healthy: [...draftsResult.healthy, ...pendingResult.healthy] })
+        },
+      }),
+    }
+  }
+}
+TOOLEOF
+
+  cd "$KILO_PLUGIN_DIR" && npm install --no-audit --no-fund --loglevel=error 2>/dev/null && cd "$OLDPWD" || true
+
+  KILO_JSONC="$KILO_CONFIG_DIR/kilo.jsonc"
+  if [ -f "$KILO_JSONC" ]; then
+    cp "$KILO_JSONC" "$KILO_JSONC.bak.$(date +%Y%m%d%H%M%S)"
+    if grep -q '"plugin"' "$KILO_JSONC" 2>/dev/null; then
+      if ! grep -q "@opencode-tools/kilo-plugin" "$KILO_JSONC" 2>/dev/null; then
+        sed -i 's/"plugin": \[/"plugin": \[ "@opencode-tools\/kilo-plugin",/' "$KILO_JSONC"
+        msg "Added plugin to existing plugin array in kilo.jsonc"
+      else
+        msg "Plugin @opencode-tools/kilo-plugin already registered in kilo.jsonc"
+      fi
+    else
+      sed -i 's/"\$schema": "https:\/\/app.kilo.ai\/config.json",/"$schema": "https:\/\/app.kilo.ai\/config.json",\n  "plugin": ["@opencode-tools\/kilo-plugin"],/' "$KILO_JSONC"
+      msg "Added plugin array to kilo.jsonc"
+    fi
+  else
+    err "kilo.jsonc not found at $KILO_JSONC"
+    err "Run 'kilo' at least once to generate the config file"
+  fi
+
+  mkdir -p ".kilo/plans" ".agents/plans/pending" ".agents/plans/completed"
+
+  cat > "$KILO_CONFIG_DIR/AGENTS.md" << 'EOF'
+## 📋 Plan-First Protocol
+
+On ANY task:
+1. Create plan → `.kilo/plans/<task>.md`
+2. Return plan to user
+3. STOP – do NOT execute
+
+Execute ONLY after: "execute", "proceed", "continue", or explicit approval.
+
+Note: The `write` tool is permitted for `.kilo/plans/**/*.md` and `.agents/plans/**/*.md` in Plan mode. All bash commands (`mv`, `rm`) run in Build mode only — they are the first action after the mode switch.
+
+---
+
+## ✅ Execution Rules (entirely in Build mode)
+
+After user approves (now in Build mode):
+1. `mv .kilo/plans/<task>.md .agents/plans/pending/<task>.md` (NEVER use `cp`)
+2. Execute the plan, updating `.agents/plans/pending/<task>.md` continuously
+3. Mark steps [x] as completed
+4. Append progress logs
+
+On completion:
+1. Status → completed
+2. `mv .agents/plans/pending/<task>.md .agents/plans/completed/<task>.md` (NEVER use `cp`)
+3. Return: result + next-step plan
+EOF
+
+  msg "Plan-it (Kilo) install complete!"
+  info "  Plugin: @opencode-tools/kilo-plugin"
+  info "  Tools: list-plans, related-plans, stale-plans"
+  info "  Start a Kilo session and ask: list plans"
+}
+
+uninstall_opencode() {
+  warn "Uninstalling plan-it (opencode)..."
+
+  for f in "$OPCODE_CONFIG_DIR/opencode.json" "$OPCODE_CONFIG_DIR/AGENTS.md" \
+    "$OPCODE_CONFIG_DIR/tools/list-plans.ts" \
+    "$OPCODE_CONFIG_DIR/tools/stale-plans.ts" "$OPCODE_CONFIG_DIR/tools/related-plans.ts" \
+    "$OPCODE_CONFIG_DIR/commands/pending.md" "$OPCODE_CONFIG_DIR/sudo-managed.sh"; do
+    if [ -f "$f" ]; then
+      rm "$f"
+      info "  Removed: $f"
+    fi
+  done
+
+  rm -rf "$OPCODE_CONFIG_DIR/skills" 2>/dev/null || true
+  rmdir "$OPCODE_CONFIG_DIR/tools" 2>/dev/null || true
+  rmdir "$OPCODE_CONFIG_DIR/commands" 2>/dev/null || true
+  rm -rf "$HOME/.agents/plans" 2>/dev/null || true
+
+  if [ -f /etc/opencode/opencode.json ]; then
+    warn "  Note: /etc/opencode/opencode.json (managed) must be removed manually (sudo)"
+  fi
+
+  msg "Opencode uninstall complete"
+}
+
+uninstall_kilo() {
+  warn "Uninstalling plan-it (Kilo)..."
+
+  rm -rf "$KILO_PLUGIN_DIR" 2>/dev/null || true
+  info "  Removed plugin: $KILO_PLUGIN_DIR"
+
+  if [ -f "$KILO_CONFIG_DIR/kilo.jsonc" ]; then
+    cp "$KILO_CONFIG_DIR/kilo.jsonc" "$KILO_CONFIG_DIR/kilo.jsonc.bak.$(date +%Y%m%d%H%M%S)"
+    sed -i 's/  "plugin": \["@opencode-tools\/kilo-plugin"\],\?//' "$KILO_CONFIG_DIR/kilo.jsonc"
+    sed -i '/^  "plugin": \[\]/d' "$KILO_CONFIG_DIR/kilo.jsonc"
+    info "  Removed plugin from kilo.jsonc"
+  fi
+
+  rm -f "$KILO_CONFIG_DIR/AGENTS.md" 2>/dev/null || true
+  info "  Removed: $KILO_CONFIG_DIR/AGENTS.md"
+
+  msg "Kilo uninstall complete"
+}
+
+show_status_opencode() {
+  echo ""
+  info "=== plan-it status (opencode) ==="
+  echo ""
+
+  local all_ok=true
+
+  for f in "opencode.json" "AGENTS.md" "commands/pending.md" "sudo-managed.sh"; do
+    if [ -f "$OPCODE_CONFIG_DIR/$f" ]; then
+      msg "  ✅ $f"
+    else
+      err "  ❌ $f"
+      all_ok=false
+    fi
+  done
+
+  for f in "tools/list-plans.ts" "tools/stale-plans.ts" "tools/related-plans.ts"; do
+    if [ -f "$OPCODE_CONFIG_DIR/$f" ]; then
+      msg "  ✅ $f"
+    else
+      err "  ❌ $f"
+      all_ok=false
+    fi
+  done
+
+  echo ""
+  if $all_ok; then
+    msg "plan-it (opencode) is fully installed"
+  else
+    err "plan-it (opencode) is incomplete — run 'install' to fix"
+  fi
+
+  if [ -f /etc/opencode/opencode.json ]; then
+    msg "  ✅ Managed config at /etc/opencode/opencode.json (unoverridable)"
+  fi
+  echo ""
+}
+
+show_status_kilo() {
+  echo ""
+  info "=== plan-it status (Kilo) ==="
+  echo ""
+
+  local all_ok=true
+
+  if [ -d "$KILO_PLUGIN_DIR" ]; then
+    msg "  ✅ Plugin directory: $KILO_PLUGIN_DIR"
+  else
+    err "  ❌ Plugin directory missing"
+    all_ok=false
+  fi
+
+  if [ -f "$KILO_PLUGIN_DIR/dist/plan-it.js" ]; then
+    msg "  ✅ PlanItPlugin: $KILO_PLUGIN_DIR/dist/plan-it.js"
+  else
+    err "  ❌ PlanItPlugin missing"
+    all_ok=false
+  fi
+
+  if grep -q "@opencode-tools/kilo-plugin" "$KILO_CONFIG_DIR/kilo.jsonc" 2>/dev/null; then
+    msg "  ✅ Plugin registered in kilo.jsonc"
+  else
+    warn "  ⬜ Plugin not registered in kilo.jsonc"
+  fi
+
+  if [ -d ".kilo/plans" ] && [ -d ".agents/plans/pending" ] && [ -d ".agents/plans/completed" ]; then
+    msg "  ✅ plan directories present (.kilo/plans/ + .agents/plans/)"
+  else
+    warn "  ⬜ plan directories not found (create with mkdir -p .kilo/plans .agents/plans/pending .agents/plans/completed)"
+  fi
+
+  if [ -f "$KILO_CONFIG_DIR/AGENTS.md" ]; then
+    msg "  ✅ Kilo AGENTS.md"
+  else
+    warn "  ⬜ Kilo AGENTS.md not at $KILO_CONFIG_DIR/AGENTS.md"
+  fi
+
+  echo ""
+  if $all_ok; then
+    msg "plan-it (Kilo) is fully installed"
+  else
+    err "plan-it (Kilo) is incomplete — run 'install' to fix"
+  fi
+  echo ""
+}
+
+usage() {
+  echo "Usage: $0 <command> [<cli>]"
+  echo ""
+  echo "Commands:"
+  echo "  install <cli>      Install plan-it (kilo|opencode)"
+  echo "  uninstall <cli>    Remove plan-it (kilo|opencode)"
+  echo "  status [<cli>]     Show installed components (kilo|opencode|all)"
+  echo "  list               List active plans"
+  echo ""
+  echo "Examples:"
+  echo "  $0 install kilo"
+  echo "  $0 install opencode"
+  echo "  $0 uninstall opencode"
+  echo "  $0 status"
+  echo "  $0 status kilo"
+  echo "  $0 list"
+  echo ""
+  echo "Aliases: add = install, rm = uninstall"
+}
+
+case "${1:-help}" in
+  install|add)
+    case "${2:-}" in
+      kilo) install_kilo ;;
+      opencode) install_opencode ;;
+      *) err "Usage: $0 install <kilo|opencode>"; exit 1 ;;
+    esac
+    ;;
+  uninstall|rm)
+    case "${2:-}" in
+      kilo) uninstall_kilo ;;
+      opencode) uninstall_opencode ;;
+      *) err "Usage: $0 uninstall <kilo|opencode>"; exit 1 ;;
+    esac
+    ;;
+  status)
+    case "${2:-all}" in
+      kilo) show_status_kilo ;;
+      opencode) show_status_opencode ;;
+      all|"") show_status_kilo; show_status_opencode ;;
+      *) err "Usage: $0 status [kilo|opencode|all]"; exit 1 ;;
+    esac
+    ;;
+  list)
+    warn "list not yet implemented"
+    echo "Plans go in:"
+    echo "  .kilo/plans/            (drafts)"
+    echo "  .agents/plans/pending/  (in-progress)"
+    echo "  .agents/plans/completed/ (archived)"
+    ;;
+  help|--help|-h)
+    usage
+    ;;
+  *)
+    err "Unknown command: $1"
+    usage
+    exit 1
+    ;;
+esac

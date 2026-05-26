@@ -1,13 +1,14 @@
 # opencode-tools
 
-AI workflow tools for OpenCode.
+AI workflow tools for OpenCode **and** Kilo CLI.
 
 **plan-it** — plan-first development.
 **doc-it** — self-maintaining docs.
+**restrict-it** — bash command guardrails.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it | bash
-curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/plan-it | bash -s install kilo
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/doc-it | bash -s install opencode
 ```
 
 ---
@@ -19,6 +20,7 @@ AI coding tools lose context over time. Plans disappear. Docs drift. Architectur
 opencode-tools fixes this:
 - **plan-it** forces planning before execution, tracks tasks, recovers stale plans
 - **doc-it** keeps project documentation synchronized automatically
+- **restrict-it** prevents dangerous commands from running unchecked
 
 ---
 
@@ -27,41 +29,31 @@ opencode-tools fixes this:
 ### plan-it
 Use for plan-first development with task tracking and pending plan recovery.
 
-
 Tell the agent:
-
-```  
-   Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it
+```
+Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/plan-it
 ```
 
 Or run:
 ```
-  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-plan-it | bash
-```
-
-Into a specific project:
-
-```
-  curl -fsSL ...install-plan-it | bash -s -- install ./my-project
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/plan-it | bash -s install kilo
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/plan-it | bash -s install opencode
 ```
 
 ### doc-it
 Use for self-maintaining docs, AI project memory, and automatic changelogs.
 
-
-Tell the agent:
 ```
-  Install this https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it
-```
-Or run:
-```
-  curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/install-doc-it | bash
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/doc-it | bash -s install kilo
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/doc-it | bash -s install opencode ./my-project
 ```
 
-Initialize a project with the full pipeline:
+### restrict-it
+Use to require approval for dangerous commands (rm -rf, git push, sudo, etc.).
 
 ```
-  curl -fsSL ...install-doc-it | bash -s -- install ./my-project
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/restrict-it | bash -s enable kilo
+curl -fsSL https://raw.githubusercontent.com/innowesley/opencode-tools/main/restrict-it | bash -s enable opencode
 ```
 
 ### Both (recommended for larger AI-native projects)
@@ -84,17 +76,23 @@ Install plan-it globally, then run doc-it's project init in your working directo
 - refreshes AI project memory
 - updates the traceability map
 
+**restrict-it:**
+- requires approval before `git push` or `npm publish`
+
 ---
 
 ## After install
 
 **plan-it:**
-- OpenCode starts checking for pending plans automatically
+- Agent starts checking for pending plans automatically
 - Plan mode saves tasks and recovers stale ones
 
 **doc-it:**
 - `docs/` tree is created in your project
 - Build mode updates docs and changelogs automatically
+
+**restrict-it:**
+- Dangerous commands require approval before execution
 
 ---
 
@@ -116,7 +114,7 @@ Project memory stays current
 
 ## Deep reference
 
-- [docs/plan-it.md](docs/plan-it.md) — components, workflow, commands, why bash heredoc
+- [docs/plan-it.md](docs/plan-it.md) — components, workflow, commands
 - [docs/doc-it.md](docs/doc-it.md) — components, pipeline, getting started
 
 ---
@@ -127,4 +125,4 @@ Project memory stays current
 git clone git@github.com:innowesley/opencode-tools.git
 ```
 
-Edit the install scripts or docs, then push. Users install from `main`.
+Edit the scripts or docs, then push. Users install from `main`.
