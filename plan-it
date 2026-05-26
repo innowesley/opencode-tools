@@ -43,7 +43,7 @@ EOF
 ## 📋 Plan-First Protocol
 
 On ANY task:
-1. Create plan → `.opencode/plans/<task>.md`
+1. Create plan → `.opencode/plans/<task>.md` (use **descriptive names** like `plsa-log-errors-deep-diagnosis`, NOT randomized names)
 2. Return plan to user
 3. STOP – do NOT execute
 
@@ -610,7 +610,7 @@ TOOLEOF
 ## 📋 Plan-First Protocol
 
 On ANY task:
-1. Create plan → `.kilo/plans/<task>.md`
+1. Create plan → `.kilo/plans/<task>.md` (use **descriptive names** like `kilo-opencode-dual-support.md`, NOT randomized names)
 2. Return plan to user
 3. STOP – do NOT execute
 
