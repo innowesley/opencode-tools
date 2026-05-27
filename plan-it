@@ -35,6 +35,18 @@ NOTE: The Plan Mode system reminder says the `write` tool is forbidden. This is 
 IMPORTANT: Use `mv` (not `cp`) when moving plan files between directories. `cp` would leave stale copies.
 
 Use the `write` tool (not bash heredocs) for plan files. Never execute until the user approves.
+
+Planning workflow:
+1. Use the `question` tool to ask clarifying questions — do NOT skip gathering user input before finalizing.
+2. After drafting, self-review: is this the best/safest/simplest approach that achieves the goal?
+3. Before proposing changes, deeply analyze compatibility with existing logic:
+   - How does the existing system work? Map affected execution paths.
+   - Identify hidden coupling, shared utilities, assumptions other features rely on.
+   - Verify impact on existing users, data, and workflows.
+   - Detect duplicated logic that could diverge later.
+   - Analyze rollback safety if deployment fails.
+4. Every plan must contain sections: Existing Logic Analysis, Potential Conflicts, Backward Compatibility, Migration/Rollout Strategy, Risk Assessment, Regression Prevention, Testing Strategy.
+5. When conflicts exist: prefer minimally invasive solutions, incremental refactors, preserve stable interfaces, add compatibility layers if needed, avoid changing core foundations without clear justification.
 <!-- END PLAN-IT PROMPT -->
 PROMPT_BLOCK
 )
@@ -82,9 +94,18 @@ PROMPT_BLOCK
 ## Plan-First Protocol
 
 On ANY task:
-1. Create plan → `.opencode/plans/<task>.md` (use **descriptive names** like `plsa-log-errors-deep-diagnosis`, NOT randomized names)
-2. Return plan to user
-3. STOP – do NOT execute
+1. Create plan → `.opencode/plans/<task>.md` (use **descriptive names**)
+2. Use the `question` tool to gather input — do NOT skip
+3. Self-review: is this the safest, simplest approach for the goal?
+4. Before finalizing, analyze compatibility with existing logic:
+   - Map affected execution paths, hidden coupling, shared utilities
+   - Check assumptions other features rely on
+   - Verify impact on existing users, data, workflows
+   - Analyze rollback safety
+5. Every plan must include: Existing Logic Analysis, Potential Conflicts, Backward Compatibility, Migration/Rollout Strategy, Risk Assessment, Regression Prevention, Testing Strategy
+6. Prefer minimally invasive solutions, incremental refactors, preserve stable interfaces
+7. Return plan to user
+8. STOP – do NOT execute
 
 Execute ONLY after: "execute", "proceed", "continue", or explicit approval.
 
@@ -108,7 +129,7 @@ AGENTS_BLOCK
 )
 
   replace_managed_block "$OPCODE_CONFIG_DIR/AGENTS.md" \
-    "$PLANIT_BEGIN" "$PLANIT_END" "$agents_block"
+    "$PLANIT_OPENCODE_BEGIN" "$PLANIT_OPENCODE_END" "$agents_block"
   manifest_add "$OPCODE_MANIFEST" "$OPCODE_CONFIG_DIR/AGENTS.md" "managed"
 
   local tool_header
@@ -702,9 +723,18 @@ TOOLEOF
 ## Plan-First Protocol
 
 On ANY task:
-1. Create plan → `.kilo/plans/<task>.md` (use **descriptive names** like `kilo-opencode-dual-support.md`, NOT randomized names)
-2. Return plan to user
-3. STOP – do NOT execute
+1. Create plan → `.kilo/plans/<task>.md` (use **descriptive names**)
+2. Use the `question` tool to gather input — do NOT skip
+3. Self-review: is this the safest, simplest approach for the goal?
+4. Before finalizing, analyze compatibility with existing logic:
+   - Map affected execution paths, hidden coupling, shared utilities
+   - Check assumptions other features rely on
+   - Verify impact on existing users, data, workflows
+   - Analyze rollback safety
+5. Every plan must include: Existing Logic Analysis, Potential Conflicts, Backward Compatibility, Migration/Rollout Strategy, Risk Assessment, Regression Prevention, Testing Strategy
+6. Prefer minimally invasive solutions, incremental refactors, preserve stable interfaces
+7. Return plan to user
+8. STOP – do NOT execute
 
 Execute ONLY after: "execute", "proceed", "continue", or explicit approval.
 
@@ -728,7 +758,7 @@ AGENTS_BLOCK
 )
 
   replace_managed_block "$KILO_CONFIG_DIR/AGENTS.md" \
-    "$PLANIT_BEGIN" "$PLANIT_END" "$kilo_agents_block"
+    "$PLANIT_KILO_BEGIN" "$PLANIT_KILO_END" "$kilo_agents_block"
   manifest_add "$KILO_MANIFEST" "$KILO_CONFIG_DIR/AGENTS.md" "managed"
 
   msg "Plan-it (Kilo) v$VERSION install complete!"
@@ -842,7 +872,7 @@ uninstall_kilo() {
     fi
   fi
 
-  remove_managed_block "$KILO_CONFIG_DIR/AGENTS.md" "$PLANIT_BEGIN" "$PLANIT_END"
+  remove_managed_block "$KILO_CONFIG_DIR/AGENTS.md" "$PLANIT_KILO_BEGIN" "$PLANIT_KILO_END"
   if [ -f "$KILO_CONFIG_DIR/AGENTS.md" ] && [ ! -s "$KILO_CONFIG_DIR/AGENTS.md" ]; then
     rm -f "$KILO_CONFIG_DIR/AGENTS.md"
   fi
@@ -1103,6 +1133,7 @@ init_opencode_project() {
   local dir="$1"
   msg "Initializing plan-it project in: $dir"
 
+  remove_managed_block "$dir/AGENTS.md" "$PLANIT_BEGIN" "$PLANIT_END"
   mkdir -p "$dir/.opencode/plans" "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
 
   local project_block
@@ -1111,15 +1142,21 @@ init_opencode_project() {
 
 On ANY task:
 1. Create plan → `.opencode/plans/<task>.md`
-2. Return plan to user
-3. STOP – do NOT execute
+2. Use the `question` tool — do NOT skip
+3. Self-review: safest, simplest approach?
+4. Analyze existing logic: execution paths, coupling, rollback safety
+5. Must include: Existing Logic Analysis, Risk Assessment, Backward Compatibility, Testing Strategy
+6. Prefer minimally invasive solutions, preserve stable interfaces
+7. Return plan to user
+8. STOP – do NOT execute
 
 Execute ONLY after explicit approval.
 AGENTS_BLOCK
 )
 
   replace_managed_block "$dir/AGENTS.md" \
-    "$PLANIT_BEGIN" "$PLANIT_END" "$project_block"
+    "$PLANIT_OPENCODE_BEGIN" "$PLANIT_OPENCODE_END" "$project_block"
+
 
   msg "Plan-it project init complete → $dir"
 }
@@ -1128,6 +1165,7 @@ init_kilo_project() {
   local dir="$1"
   msg "Initializing plan-it project in: $dir"
 
+  remove_managed_block "$dir/AGENTS.md" "$PLANIT_BEGIN" "$PLANIT_END"
   mkdir -p "$dir/.kilo/plans" "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
 
   local project_block
@@ -1136,17 +1174,46 @@ init_kilo_project() {
 
 On ANY task:
 1. Create plan → `.kilo/plans/<task>.md`
-2. Return plan to user
-3. STOP – do NOT execute
+2. Use the `question` tool — do NOT skip
+3. Self-review: safest, simplest approach?
+4. Analyze existing logic: execution paths, coupling, rollback safety
+5. Must include: Existing Logic Analysis, Risk Assessment, Backward Compatibility, Testing Strategy
+6. Prefer minimally invasive solutions, preserve stable interfaces
+7. Return plan to user
+8. STOP – do NOT execute
 
 Execute ONLY after explicit approval.
 AGENTS_BLOCK
 )
 
   replace_managed_block "$dir/AGENTS.md" \
-    "$PLANIT_BEGIN" "$PLANIT_END" "$project_block"
+    "$PLANIT_KILO_BEGIN" "$PLANIT_KILO_END" "$project_block"
 
   msg "Plan-it project init complete → $dir"
+}
+
+deinit_opencode_project() {
+  local dir="$1" clean="${2:-}"
+  msg "Removing plan-it (opencode) from project: $dir"
+  remove_managed_block "$dir/AGENTS.md" "$PLANIT_BEGIN" "$PLANIT_END"
+  remove_managed_block "$dir/AGENTS.md" "$PLANIT_OPENCODE_BEGIN" "$PLANIT_OPENCODE_END"
+  if [ "$clean" = "--clean" ]; then
+    rm -rf "$dir/.opencode/plans" 2>/dev/null || true
+    msg "  Removed .opencode/plans/"
+  fi
+  msg "Project deinit complete"
+}
+
+deinit_kilo_project() {
+  local dir="$1" clean="${2:-}"
+  msg "Removing plan-it (kilo) from project: $dir"
+  remove_managed_block "$dir/AGENTS.md" "$PLANIT_BEGIN" "$PLANIT_END"
+  remove_managed_block "$dir/AGENTS.md" "$PLANIT_KILO_BEGIN" "$PLANIT_KILO_END"
+  if [ "$clean" = "--clean" ]; then
+    rm -rf "$dir/.kilo/plans" 2>/dev/null || true
+    msg "  Removed .kilo/plans/"
+  fi
+  msg "Project deinit complete"
 }
 
 # ---------------------------------------------------------------------------
@@ -1159,6 +1226,7 @@ usage() {
   echo "Commands:"
   echo "  install <cli>              Install plan-it globally (kilo|opencode)"
   echo "  init <cli> <project>       Initialize project structure"
+  echo "  deinit <cli> <project>     Remove project-level plan-it (add --clean to remove plan dirs)"
   echo "  uninstall <cli>            Remove plan-it (kilo|opencode)"
   echo "  status [<cli>]             Show installed components (kilo|opencode|all)"
   echo "  doctor [<cli>]             Read-only diagnostics (kilo|opencode|all)"
@@ -1168,6 +1236,8 @@ usage() {
   echo "  $0 install kilo"
   echo "  $0 install opencode"
   echo "  $0 init opencode ./my-project"
+  echo "  $0 deinit opencode ./my-project"
+  echo "  $0 deinit opencode ./my-project --clean"
   echo "  $0 uninstall opencode"
   echo "  $0 status"
   echo "  $0 doctor"
@@ -1201,6 +1271,13 @@ case "${1:-help}" in
       kilo) init_kilo_project "${3:-.}" ;;
       opencode) init_opencode_project "${3:-.}" ;;
       *) err "Usage: $0 init <kilo|opencode> [project-dir]"; exit 1 ;;
+    esac
+    ;;
+  deinit)
+    case "${2:-}" in
+      kilo) deinit_kilo_project "${3:-.}" "${4:-}" ;;
+      opencode) deinit_opencode_project "${3:-.}" "${4:-}" ;;
+      *) err "Usage: $0 deinit <kilo|opencode> [project-dir] [--clean]"; exit 1 ;;
     esac
     ;;
   uninstall|rm)
