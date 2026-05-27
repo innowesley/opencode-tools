@@ -1,8 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 IFS=$'\n\t'
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/_lib.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || true)"
+if [ -f "$SCRIPT_DIR/_lib.sh" ]; then
+  source "$SCRIPT_DIR/_lib.sh"
+else
+  LIB_URL="https://raw.githubusercontent.com/innowesley/opencode-tools/main/_lib.sh"
+  _lib_tmp="$(mktemp)"
+  curl -fsSL "$LIB_URL" > "$_lib_tmp"
+  source "$_lib_tmp"
+  rm -f "$_lib_tmp"
+fi
 
 VERSION="1.0.0"
 
