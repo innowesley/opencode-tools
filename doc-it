@@ -1,31 +1,66 @@
 #!/bin/bash
 set -euo pipefail
+IFS=$'\n\t'
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/_lib.sh"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+VERSION="1.0.0"
 
 OPCODE_CONFIG_DIR="$HOME/.config/opencode"
 KILO_CONFIG_DIR="$HOME/.config/kilo"
 KILO_PLUGIN_DIR="$KILO_CONFIG_DIR/node_modules/@opencode-tools/kilo-plugin"
+OPCODE_MANIFEST="$OPCODE_CONFIG_DIR/.doc-it-manifest"
+KILO_MANIFEST="$KILO_CONFIG_DIR/.doc-it-manifest"
 
-DOCS_TREE="docs/ai-context docs/architecture docs/features docs/database docs/api docs/testing docs/decisions docs/changelogs docs/generated docs/audits docs/contracts docs/playbooks docs/known-issues docs/future/technical-debt docs/future/architecture-improvements docs/future/ai-improvements docs/future/feature-ideas docs/future/rejected-ideas"
+  DOCS_TREE_BRACE="{ai-context,architecture,features,database,api,testing,decisions,changelogs,generated,audits,contracts,playbooks,known-issues,future/{technical-debt,architecture-improvements,ai-improvements,feature-ideas,rejected-ideas}}"
 
-msg()  { printf "${GREEN}%s${NC}\n" "$1"; }
-info() { printf "${CYAN}%s${NC}\n" "$1"; }
-warn() { printf "${YELLOW}%s${NC}\n" "$1"; }
-err()  { printf "${RED}%s${NC}\n" "$1"; }
+  # ---------------------------------------------------------------------------
+  # AI rules creation (seed files)
+  # ---------------------------------------------------------------------------
+
+  create_ai_rules() {
+    local dir="$1"
+    mkdir -p "$dir/.ai"
+
+  write_if_missing "$dir/.ai/execute-rules.md" << 'EOF'
+# Execute Rules
+
+- Update documentation before task completion
+- Run validation tools before merge
+- Preserve contracts and invariants
+- Never bypass the service layer for database access
+EOF
+
+  write_if_missing "$dir/.ai/doc-rules.md" << 'EOF'
+# Doc Rules
+
+- Every feature change must be documented
+- Stale docs must be repaired before completion
+- All API routes must be registered in api-registry.md
+- Schema changes must be reflected in database docs
+EOF
+
+  write_if_missing "$dir/.ai/architecture-rules.md" << 'EOF'
+# Architecture Rules
+
+- Follow documented data flows
+- Preserve integration contracts
+- Document deviations as ADRs
+- Never bypass the service layer for DB access
+EOF
+}
 
 # ---------------------------------------------------------------------------
-# Shared doc tree creation (same for both CLIs)
+# Shared doc tree creation (ownership split)
 # ---------------------------------------------------------------------------
 
 create_docs() {
   local dir="$1"
+  mkdir -p "$dir/docs/$DOCS_TREE_BRACE"
 
-  cat > "$dir/docs/ai-context/execution-rules.md" << 'EOF'
+  # --- Seed files (write if missing) ---
+
+  write_if_missing "$dir/docs/ai-context/execution-rules.md" << 'EOF'
 # Universal Execution Rules
 
 ## Documentation Enforcement
@@ -72,7 +107,7 @@ Tasks are NOT complete unless:
 - violations checked
 EOF
 
-  cat > "$dir/docs/ai-context/business-rules.md" << 'EOF'
+  write_if_missing "$dir/docs/ai-context/business-rules.md" << 'EOF'
 # Business Rules
 
 _Describe core business rules here._
@@ -82,7 +117,7 @@ _Describe core business rules here._
 - (add business rules as discovered)
 EOF
 
-  cat > "$dir/docs/ai-context/architecture-constraints.md" << 'EOF'
+  write_if_missing "$dir/docs/ai-context/architecture-constraints.md" << 'EOF'
 # Architecture Constraints
 
 _List architecture constraints here._
@@ -92,7 +127,7 @@ _List architecture constraints here._
 - (add constraints as decisions are made)
 EOF
 
-  cat > "$dir/docs/ai-context/coding-rules.md" << 'EOF'
+  write_if_missing "$dir/docs/ai-context/coding-rules.md" << 'EOF'
 # Coding Rules
 
 _Define project-specific coding conventions here._
@@ -102,7 +137,7 @@ _Define project-specific coding conventions here._
 - (add conventions as established)
 EOF
 
-  cat > "$dir/docs/ai-context/terminology.md" << 'EOF'
+  write_if_missing "$dir/docs/ai-context/terminology.md" << 'EOF'
 # Terminology
 
 _Define project-specific terms and acronyms here._
@@ -112,7 +147,7 @@ _Define project-specific terms and acronyms here._
 - (add terms as discovered)
 EOF
 
-  cat > "$dir/docs/ai-context/forbidden-patterns.md" << 'EOF'
+  write_if_missing "$dir/docs/ai-context/forbidden-patterns.md" << 'EOF'
 # Forbidden Patterns
 
 _List anti-patterns that must never appear in this codebase._
@@ -122,7 +157,7 @@ _List anti-patterns that must never appear in this codebase._
 - (add patterns when identified)
 EOF
 
-  cat > "$dir/docs/architecture/system-map.md" << 'EOF'
+  write_if_missing "$dir/docs/architecture/system-map.md" << 'EOF'
 # System Map
 
 _High-level architecture overview._
@@ -140,7 +175,7 @@ _Diagram or description of data flow between components._
 - (deployment architecture notes)
 EOF
 
-  cat > "$dir/docs/architecture/data-flow.md" << 'EOF'
+  write_if_missing "$dir/docs/architecture/data-flow.md" << 'EOF'
 # Data Flow
 
 _Describe how data moves through the system._
@@ -150,7 +185,7 @@ _Describe how data moves through the system._
 - (document key data flows)
 EOF
 
-  cat > "$dir/docs/architecture/permissions.md" << 'EOF'
+  write_if_missing "$dir/docs/architecture/permissions.md" << 'EOF'
 # Permissions
 
 _List permission models and access control rules._
@@ -160,7 +195,7 @@ _List permission models and access control rules._
 - (define roles and permissions)
 EOF
 
-  cat > "$dir/docs/architecture/integration-map.md" << 'EOF'
+  write_if_missing "$dir/docs/architecture/integration-map.md" << 'EOF'
 # Integration Map
 
 _List external integrations and their connection points._
@@ -170,7 +205,7 @@ _List external integrations and their connection points._
 - (list integrations with endpoints and auth methods)
 EOF
 
-  cat > "$dir/docs/features/README.md" << 'EOF'
+  write_if_missing "$dir/docs/features/README.md" << 'EOF'
 # Feature Documentation
 
 Each feature has its own directory with:
@@ -204,12 +239,11 @@ contracts:
 testing_workflows:
   - testing/workflows/my-feature.md
 ---
-```
 
 Traceability tools use this frontmatter to auto-generate maps.
 EOF
 
-  cat > "$dir/docs/database/schema-overview.md" << 'EOF'
+  write_if_missing "$dir/docs/database/schema-overview.md" << 'EOF'
 # Schema Overview
 
 _Database schema documentation._
@@ -223,7 +257,7 @@ _Database schema documentation._
 - (document table relationships)
 EOF
 
-  cat > "$dir/docs/api/api-registry.md" << 'EOF'
+  write_if_missing "$dir/docs/api/api-registry.md" << 'EOF'
 # API Registry
 
 _All API endpoints and their documentation._
@@ -233,7 +267,7 @@ _All API endpoints and their documentation._
 - (list API endpoints with method, path, description, auth)
 EOF
 
-  cat > "$dir/docs/testing/README.md" << 'EOF'
+  write_if_missing "$dir/docs/testing/README.md" << 'EOF'
 # Testing Documentation
 
 ## Workflows
@@ -249,7 +283,7 @@ EOF
 - docs/testing/regression-checklists/ — checklists for manual verification
 EOF
 
-  cat > "$dir/docs/decisions/001-template.md" << 'EOF'
+  write_if_missing "$dir/docs/decisions/001-template.md" << 'EOF'
 # ADR-001: Title
 
 **Date:** YYYY-MM-DD
@@ -269,7 +303,7 @@ _What is the change that we're proposing and/or doing?_
 _What becomes easier or more difficult to do because of this change?_
 EOF
 
-  cat > "$dir/docs/changelogs/README.md" << 'EOF'
+  write_if_missing "$dir/docs/changelogs/README.md" << 'EOF'
 # Changelogs
 
 Changelog entries are auto-generated by the `changelog-generator` tool.
@@ -293,7 +327,7 @@ Each file: `docs/changelogs/YYYY-MM-DD-title.md`
 ```
 EOF
 
-  cat > "$dir/docs/generated/README.md" << 'EOF'
+  write_if_missing "$dir/docs/generated/README.md" << 'EOF'
 # Generated Documentation
 
 ⚠️ **MACHINE OWNED — DO NOT EDIT**
@@ -307,7 +341,7 @@ Files in this directory are auto-generated by tools. Manual edits will be overwr
 | doc-registry.json | — | Central registry of features, routes, tables, contracts |
 EOF
 
-  cat > "$dir/docs/audits/README.md" << 'EOF'
+  write_if_missing "$dir/docs/audits/README.md" << 'EOF'
 # Audits
 
 _Audit reports generated by doc-it tools._
@@ -320,7 +354,7 @@ _Audit reports generated by doc-it tools._
 - docs/audits/security-report.md
 EOF
 
-  cat > "$dir/docs/contracts/README.md" << 'EOF'
+  write_if_missing "$dir/docs/contracts/README.md" << 'EOF'
 # Contracts
 
 **⚠️ PROTECTED — Human modification required**
@@ -347,7 +381,7 @@ Contracts define system invariants. Agents MUST obey them.
 - (list contracts with descriptions)
 EOF
 
-  cat > "$dir/docs/playbooks/doc-maintenance.md" << 'EOF'
+  write_if_missing "$dir/docs/playbooks/doc-maintenance.md" << 'EOF'
 # Doc Maintenance Playbook
 
 ## When to Update Docs
@@ -372,7 +406,7 @@ EOF
 - Review `rule-violation-checker` output for any violations
 EOF
 
-  cat > "$dir/docs/known-issues/README.md" << 'EOF'
+  write_if_missing "$dir/docs/known-issues/README.md" << 'EOF'
 # Known Issues
 
 _Tracked issues for AI agent awareness._
@@ -396,7 +430,7 @@ open | being-tracked | postponed | fixed
 ```
 EOF
 
-  cat > "$dir/docs/future/README.md" << 'EOF'
+  write_if_missing "$dir/docs/future/README.md" << 'EOF'
 # Future Improvements
 
 This directory captures ideas, technical debt, and improvement opportunities for AI and human reference.
@@ -425,6 +459,9 @@ This directory captures ideas, technical debt, and improvement opportunities for
 Each idea should include: title, status, priority, complexity, problem, suggested improvement, expected benefits.
 EOF
 
+  # --- Generated directory READMEs (always overwrite) ---
+  mkdir -p "$dir/docs/ai-context/generated" "$dir/docs/architecture/generated"
+
   msg "Docs initialized → $dir/docs/"
 }
 
@@ -433,100 +470,278 @@ EOF
 # ---------------------------------------------------------------------------
 
 install_opencode_tools() {
+  command -v node >/dev/null 2>&1 || { err "node is required but not installed"; return 1; }
+  command -v npm >/dev/null 2>&1 || { err "npm is required but not installed"; return 1; }
   local tdir="$1"
 
-  cat > "$tdir/doc-drift-checker.ts" << 'TOOLEOF'
-import { readdir, readFile, stat } from "node:fs/promises"
-import { tool } from "@opencode-ai/plugin"
+  # --- Shared core module (framework-agnostic) ---
+  cat > "$tdir/doc-it-core.js" << 'COREEOF'
+// doc-it-managed: true
+// source-version: 1.0.0
+import { readdir, readFile, stat, mkdir, writeFile } from "node:fs/promises"
 
-export default tool({
-  description: "Check for stale/missing documentation by scanning changed source files and cross-referencing with docs/",
-  args: {
-    changedFiles: tool.schema.string().optional().describe("Comma-separated list of changed files (auto-detected if not provided)"),
-  },
-  async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const stale: { doc: string; reason: string; severity: string }[] = []
-    let healthy = 0
-
-    const changedFiles = args.changedFiles
-      ? args.changedFiles.split(",").map(s => s.trim())
-      : await getRecentlyChanged(base)
-
-    const featureDocs = await listDocs(`${base}/docs/features`)
-    const apiDocs = await listDocs(`${base}/docs/api`)
-    const dbDocs = await listDocs(`${base}/docs/database`)
-
-    for (const file of changedFiles) {
-      if (file.startsWith("docs/")) continue
-
-      if ((file.includes("/routes/") || file.match(/\.route\./)) && apiDocs.length === 0) {
-        stale.push({ doc: "docs/api/api-registry.md", reason: `Route file changed (${file}) but no API docs found`, severity: "important" })
-        continue
-      }
-
-      if (file.match(/schema|model|migration|\.sql/) && dbDocs.length === 0) {
-        stale.push({ doc: "docs/database/schema-overview.md", reason: `Schema file changed (${file}) but no DB docs found`, severity: "critical" })
-        continue
-      }
-
-      if (file.match(/src\/(features|modules|components)/)) {
-        const featureName = file.split("/").slice(2, 3).join("/")
-        const matchingFeature = featureDocs.find(f => f.includes(featureName))
-        if (!matchingFeature) {
-          stale.push({ doc: `docs/features/${featureName}/`, reason: `Feature file changed (${file}) but no feature docs found`, severity: "important" })
-        }
-      }
-    }
-
-    for (const docs of [featureDocs, apiDocs, dbDocs]) {
-      for (const doc of docs) {
-        try {
-          const content = await readFile(`${base}/${doc}`, "utf-8")
-          const refs = content.match(/(?:`)?[\w./-]+\.\w{1,4}(?:`)?/g) || []
-          for (const ref of refs) {
-            const clean = ref.replace(/`/g, "")
-            if ((clean.startsWith(".") || clean.startsWith("/") || clean.includes("/")) && !clean.startsWith("http")) {
-              try { await stat(`${base}/${clean}`) } catch {
-                if (!stale.find(s => s.doc === doc)) {
-                  stale.push({ doc, reason: `Referenced file ${clean} no longer exists`, severity: "important" })
-                }
-              }
-            }
-          }
-          healthy++
-        } catch { healthy++ }
-      }
-    }
-
-    return JSON.stringify({ count: changedFiles.length, stale, healthy_count: healthy })
-  },
-})
-
-async function getRecentlyChanged(base: string): Promise<string[]> {
+async function getRecentlyChanged(base) {
   try {
     const { execSync } = await import("node:child_process")
     const out = execSync("git diff --name-only HEAD~1..HEAD 2>/dev/null || git diff --name-only 2>/dev/null || echo", { cwd: base, encoding: "utf-8" })
     return out.trim().split("\n").filter(Boolean)
   } catch {
+    console.warn("doc-drift-checker: not a git repository or git unavailable; falling back to full src/ scan")
     return ["src/"]
   }
 }
 
-async function listDocs(dir: string): Promise<string[]> {
+async function walkDocs(dir, prefix) {
+  const entries = await readdir(dir, { withFileTypes: true })
+  const results = []
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const sub = await walkDocs(dir + "/" + entry.name, prefix ? prefix + "/" + entry.name : entry.name)
+      results.push(...sub)
+    } else if (entry.name.endsWith(".md")) {
+      results.push(prefix ? prefix + "/" + entry.name : entry.name)
+    }
+  }
+  return results
+}
+
+async function listDocs(dir) {
   try {
-    const files = await readdir(dir, { recursive: true }) as string[]
-    return files.filter(f => f.endsWith(".md")).map(f => `docs/${dir.split("/docs/")[1]}/${f}`)
+    return await walkDocs(dir, "")
   } catch {
     return []
   }
 }
+
+function parseYamlList(frontmatter, key) {
+  const re = new RegExp("^" + key + ":\\s*((?:\\n\\s+-\\s+.*)+)", "m")
+  const m = frontmatter.match(re)
+  if (m) return m[1].trim().split("\n").map(s => s.replace(/^\s*-\s*/, "").trim())
+  const inline = frontmatter.match(new RegExp("^" + key + ":\\s*\\[([^\\]]+)\\]", "m"))
+  if (inline) return inline[1].split(",").map(s => s.trim().replace(/^['"]|['"]$/g, ""))
+  const flat = frontmatter.match(new RegExp("^" + key + ":\\s*(.+)$", "m"))
+  return flat ? flat[1].split(",").map(s => s.trim()) : []
+}
+
+async function scanDirForPatterns(dir, violations, patterns) {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const full = dir + "/" + entry.name
+      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
+        await scanDirForPatterns(full, violations, patterns)
+      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
+        const content = await readFile(full, "utf-8")
+        for (const p of patterns) {
+          if (content.match(p.pattern)) {
+            violations.push({ rule: p.rule, file: full, severity: p.severity })
+          }
+        }
+      }
+    }
+  } catch { console.warn("doc-it: error scanning " + dir + " for forbidden patterns") }
+}
+
+async function scanDirForRoutes(dir, apiDoc, violations) {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const full = dir + "/" + entry.name
+      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
+        await scanDirForRoutes(full, apiDoc, violations)
+      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
+        const content = await readFile(full, "utf-8")
+        const routeDefs = content.match(/(?:app|router)\s*(?:\.route\([^)]+\))?\s*\.(?:get|post|put|patch|delete|options)\(['"`][^'"`]+/g)
+        if (routeDefs) {
+          for (const r of routeDefs) {
+            if (!apiDoc.includes(r)) {
+              violations.push({ rule: "Route " + r + " not documented in api-registry.md", file: full, severity: "medium" })
+            }
+          }
+        }
+      }
+    }
+  } catch { console.warn("doc-it: error scanning " + dir + " for routes") }
+}
+
+export async function checkDocDrift(args, base) {
+  const stale = []
+  let healthy = 0
+  const changedFiles = args.changedFiles ? args.changedFiles.split(",").map(s => s.trim()) : await getRecentlyChanged(base)
+  const featureDocs = await listDocs(base + "/docs/features")
+  const apiDocs = await listDocs(base + "/docs/api")
+  const dbDocs = await listDocs(base + "/docs/database")
+
+  for (const file of changedFiles) {
+    if (file.startsWith("docs/")) continue
+    if ((file.includes("/routes/") || file.match(/\.route\./)) && apiDocs.length === 0) {
+      stale.push({ doc: "docs/api/api-registry.md", reason: "Route file changed (" + file + ") but no API docs found", severity: "important" }); continue
+    }
+    if (file.match(/schema|model|migration|\.sql/) && dbDocs.length === 0) {
+      stale.push({ doc: "docs/database/schema-overview.md", reason: "Schema file changed (" + file + ") but no DB docs found", severity: "critical" }); continue
+    }
+    if (file.match(/src\/(features|modules|components)/)) {
+      const featureName = file.split("/").slice(2, 3).join("/")
+      if (!featureDocs.find(f => f.includes(featureName))) {
+        stale.push({ doc: "docs/features/" + featureName + "/", reason: "Feature file changed (" + file + ") but no feature docs found", severity: "important" })
+      }
+    }
+  }
+
+  for (const docs of [featureDocs, apiDocs, dbDocs]) {
+    for (const doc of docs) {
+      try {
+        const content = await readFile(base + "/" + doc, "utf-8")
+        const refs = content.match(/(?:`)?[\w./-]+\.\w{1,4}(?:`)?/g) || []
+        for (const ref of refs) {
+          const clean = ref.replace(/`/g, "")
+          if ((clean.startsWith(".") || clean.startsWith("/") || clean.includes("/")) && !clean.startsWith("http")) {
+            try { await stat(base + "/" + clean) } catch {
+              if (!stale.find(s => s.doc === doc)) stale.push({ doc, reason: "Referenced file " + clean + " no longer exists", severity: "important" })
+            }
+          }
+        }
+        healthy++
+      } catch { healthy++ }
+    }
+  }
+  return JSON.stringify({ count: changedFiles.length, stale, healthy_count: healthy })
+}
+
+export async function createChangelog(args, base) {
+  const changelogDir = base + "/docs/changelogs"
+  await mkdir(changelogDir, { recursive: true })
+  const date = new Date().toISOString().split("T")[0]
+  const slug = args.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+  const filename = date + "-" + slug + ".md"
+  const fullPath = changelogDir + "/" + filename
+  const header = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it changelog-generator -->\n<!-- source: changelog-generator.ts -->\n<!-- generated-at: " + new Date().toISOString() + " -->\n\n"
+  const content = "# " + date + " \u2014 " + args.title + "\n\n" + args.changes + (args.features ? "\n\n**Affected features:** " + args.features : "") + (args.breaking ? "\n\n## Breaking Changes\n\n" + args.breaking : "") + "\n"
+  await writeFile(fullPath, header + content, "utf-8")
+  return JSON.stringify({ changelog: "docs/changelogs/" + filename, path: fullPath })
+}
+
+export async function buildTraceability(base) {
+  const archDir = base + "/docs/architecture/generated"
+  await mkdir(archDir, { recursive: true })
+  const featureDocsDir = base + "/docs/features"
+  const traceability = []
+
+  try {
+    const entries = await readdir(featureDocsDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.name.endsWith(".md")) continue
+      const content = await readFile(featureDocsDir + "/" + entry.name, "utf-8")
+      const frontmatter = content.match(/^---\n([\s\S]*?)\n---/)?.[1] || ""
+      traceability.push({
+        feature: entry.name.replace(/\.md$/, ""),
+        files: parseYamlList(frontmatter, "source_dirs"),
+        routes: parseYamlList(frontmatter, "related_routes"),
+        tables: parseYamlList(frontmatter, "related_tables"),
+        tests: parseYamlList(frontmatter, "testing_workflows"),
+        docs: [entry.name]
+      })
+    }
+  } catch {}
+
+  let rows = ""
+  for (const t of traceability) {
+    rows += "| " + t.feature + " | " + (t.files.join(", ") || "\u2014") + " | " + (t.routes.join(", ") || "\u2014") + " | " + (t.tables.join(", ") || "\u2014") + " | " + (t.tests.join(", ") || "\u2014") + " | " + (t.docs.join(", ") || "\u2014") + " |\n"
+  }
+
+  const timestamp = new Date().toISOString()
+  const mapContent = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it traceability-generator -->\n<!-- source: traceability-generator.ts -->\n<!-- generated-at: " + timestamp + " -->\n\n# Traceability Map\n\n_Generated: " + timestamp + "_\n\n| Feature | Files | Routes | Tables | Tests | Docs |\n|---------|-------|--------|--------|-------|------|\n" + rows + "\n## Summary\n\n- **Features tracked:** " + traceability.length + "\n- **Total routes:** " + traceability.reduce((a, t) => a + t.routes.length, 0) + "\n- **Total tables:** " + traceability.reduce((a, t) => a + t.tables.length, 0) + "\n"
+  await writeFile(archDir + "/traceability.md", mapContent, "utf-8")
+  return JSON.stringify({ traceability_count: traceability.length, path: "docs/architecture/generated/traceability.md" })
+}
+
+export async function generateAiContext(base) {
+  const aiGenDir = base + "/docs/ai-context/generated"
+  const archDir = base + "/docs/architecture"
+  const featuresDir = base + "/docs/features"
+  const knownDir = base + "/docs/known-issues"
+  await mkdir(aiGenDir, { recursive: true })
+  const sections = []
+
+  const readSection = async (dir) => {
+    const lines = []
+    try {
+      const files = await readdir(dir)
+      for (const f of files) {
+        if (!f.endsWith(".md")) continue
+        const content = await readFile(dir + "/" + f, "utf-8")
+        const h1 = content.match(/^# (.+)/m)?.[1] || f.replace(/\.md$/, "")
+        lines.push("\n### " + h1 + "\n" + content.slice(0, 500).replace(/^#.+$/m, "").trim() + "\n")
+      }
+    } catch {}
+    return lines
+  }
+
+  sections.push("## Architecture\n" + (await readSection(archDir)).join("\n"))
+  sections.push("## Features\n" + (await readSection(featuresDir)).join("\n"))
+  sections.push("## Known Issues\n" + (await readSection(knownDir)).join("\n"))
+
+  const timestamp = new Date().toISOString()
+  const stateContent = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it ai-context-generator -->\n<!-- source: ai-context-generator.ts -->\n<!-- generated-at: " + timestamp + " -->\n\n# Current System State\n\n_Last regenerated: " + timestamp + "_\n\n" + sections.join("\n") + "\n"
+  await writeFile(aiGenDir + "/current-system-state.md", stateContent, "utf-8")
+  const summaryContent = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it ai-context-generator -->\n<!-- source: ai-context-generator.ts -->\n<!-- generated-at: " + timestamp + " -->\n\n# Project Summary\n\n_Generated: " + timestamp + "_\n\n" + sections.slice(0, 2).join("\n") + (knownDir ? "\n### Known Issues (" + sections[2].length + ")\n- See docs/known-issues/" : "") + "\n"
+  await writeFile(aiGenDir + "/project-summary.md", summaryContent, "utf-8")
+  return JSON.stringify({ regenerated: ["docs/ai-context/generated/current-system-state.md", "docs/ai-context/generated/project-summary.md"], sections_compressed: sections.length })
+}
+
+const forbiddenPatterns = [
+  { pattern: /db\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct DB write (use service layer)", severity: "high" },
+  { pattern: /prisma\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct Prisma write (use service layer)", severity: "high" },
+  { pattern: /await\s+\w+\s*\.\s*save\s*\(/g, rule: "Direct entity save (use repository)", severity: "medium" },
+]
+
+export async function checkRuleViolations(sourceDirs, base) {
+  const violations = []
+  let passed = 0
+  for (const dir of sourceDirs) {
+    await scanDirForPatterns(base + "/" + dir, violations, forbiddenPatterns)
+  }
+  let contractFiles = []
+  try { contractFiles = (await readdir(base + "/docs/contracts")).filter(f => f.endsWith(".md")) } catch {}
+  for (const cf of contractFiles) {
+    try {
+      const content = await readFile(base + "/docs/contracts/" + cf, "utf-8")
+      if (content.match(/## Forbidden/)) passed++
+    } catch {}
+  }
+  let apiDoc = ""
+  try { apiDoc = await readFile(base + "/docs/api/api-registry.md", "utf-8") } catch {}
+  for (const dir of sourceDirs) {
+    await scanDirForRoutes(base + "/" + dir, apiDoc, violations)
+  }
+  return JSON.stringify({ violations, passed_checks: passed + (apiDoc ? 1 : 0) })
+}
+COREEOF
+  manifest_add "$OPCODE_MANIFEST" "$tdir/doc-it-core.js" "managed" "$VERSION"
+
+  # --- Thin TypeScript wrappers ---
+
+  cat > "$tdir/doc-drift-checker.ts" << 'TOOLEOF'
+// doc-it-managed: true
+// source-version: 1.0.0
+import { tool } from "@opencode-ai/plugin"
+import { checkDocDrift } from "./doc-it-core.js"
+export default tool({
+  description: "Check for stale/missing documentation by scanning changed source files and cross-referencing with docs/",
+  args: { changedFiles: tool.schema.string().optional().describe("Comma-separated list of changed files (auto-detected if not provided)") },
+  async execute(args, context) {
+    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    return await checkDocDrift(args, base)
+  },
+})
 TOOLEOF
+  manifest_add "$OPCODE_MANIFEST" "$tdir/doc-drift-checker.ts" "managed" "$VERSION"
 
   cat > "$tdir/changelog-generator.ts" << 'TOOLEOF'
-import { mkdir, writeFile } from "node:fs/promises"
+// doc-it-managed: true
+// source-version: 1.0.0
 import { tool } from "@opencode-ai/plugin"
-
+import { createChangelog } from "./doc-it-core.js"
 export default tool({
   description: "Create a changelog entry in docs/changelogs/",
   args: {
@@ -537,215 +752,66 @@ export default tool({
   },
   async execute(args, context) {
     const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const changelogDir = `${base}/docs/changelogs`
-    await mkdir(changelogDir, { recursive: true })
-
-    const date = new Date().toISOString().split("T")[0]
-    const slug = args.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
-    const filename = `${date}-${slug}.md`
-    const fullPath = `${changelogDir}/${filename}`
-
-    const content = `# ${date} — ${args.title}\n\n${args.changes}\n${args.features ? `\n**Affected features:** ${args.features}` : ""}${args.breaking ? `\n\n## Breaking Changes\n\n${args.breaking}` : ""}\n`
-
-    await writeFile(fullPath, content, "utf-8")
-    return JSON.stringify({ changelog: `docs/changelogs/${filename}`, path: fullPath })
+    return await createChangelog(args, base)
   },
 })
 TOOLEOF
+  manifest_add "$OPCODE_MANIFEST" "$tdir/changelog-generator.ts" "managed" "$VERSION"
 
   cat > "$tdir/traceability-generator.ts" << 'TOOLEOF'
-import { readdir, readFile, writeFile, mkdir } from "node:fs/promises"
+// doc-it-managed: true
+// source-version: 1.0.0
 import { tool } from "@opencode-ai/plugin"
-
+import { buildTraceability } from "./doc-it-core.js"
 export default tool({
-  description: "Build a feature → files → routes → tables → tests → docs traceability map in docs/architecture/traceability.md",
+  description: "Build a feature \u2192 files \u2192 routes \u2192 tables \u2192 tests \u2192 docs traceability map in docs/architecture/generated/traceability.md",
   args: {},
   async execute(_args, context) {
     const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const archDir = `${base}/docs/architecture`
-    await mkdir(archDir, { recursive: true })
-
-    const featureDocsDir = `${base}/docs/features`
-    const traceability: { feature: string; files: string[]; routes: string[]; tables: string[]; tests: string[]; docs: string[] }[] = []
-
-    try {
-      const entries = await readdir(featureDocsDir, { withFileTypes: true })
-      for (const entry of entries) {
-        if (!entry.name.endsWith(".md")) continue
-        const content = await readFile(`${featureDocsDir}/${entry.name}`, "utf-8")
-        const feature = entry.name.replace(/\.md$/, "")
-
-        const files = content.match(/source_dirs:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-        const routes = content.match(/related_routes:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-        const tables = content.match(/related_tables:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-        const tests = content.match(/testing_workflows:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-
-        traceability.push({ feature, files, routes, tables, tests, docs: [entry.name] })
-      }
-    } catch {}
-
-    let rows = ""
-    for (const t of traceability) {
-      rows += `| ${t.feature} | ${t.files.join(", ") || "—"} | ${t.routes.join(", ") || "—"} | ${t.tables.join(", ") || "—"} | ${t.tests.join(", ") || "—"} | ${t.docs.join(", ") || "—"} |\n`
-    }
-
-    const mapContent = `# Traceability Map\n\n_Generated: ${new Date().toISOString()}_\n\n| Feature | Files | Routes | Tables | Tests | Docs |\n|---------|-------|--------|--------|-------|------|\n${rows}\n## Summary\n\n- **Features tracked:** ${traceability.length}\n- **Total routes:** ${traceability.reduce((a, t) => a + t.routes.length, 0)}\n- **Total tables:** ${traceability.reduce((a, t) => a + t.tables.length, 0)}\n`
-
-    await writeFile(`${archDir}/traceability.md`, mapContent, "utf-8")
-    return JSON.stringify({ traceability_count: traceability.length, path: "docs/architecture/traceability.md" })
+    return await buildTraceability(base)
   },
 })
 TOOLEOF
+  manifest_add "$OPCODE_MANIFEST" "$tdir/traceability-generator.ts" "managed" "$VERSION"
 
   cat > "$tdir/ai-context-generator.ts" << 'TOOLEOF'
-import { readdir, readFile, writeFile, mkdir } from "node:fs/promises"
+// doc-it-managed: true
+// source-version: 1.0.0
 import { tool } from "@opencode-ai/plugin"
-
+import { generateAiContext } from "./doc-it-core.js"
 export default tool({
   description: "Regenerate ai-context docs (current-system-state.md + project-summary.md) from the project docs tree",
   args: {},
   async execute(_args, context) {
     const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const aiDir = `${base}/docs/ai-context`
-    const archDir = `${base}/docs/architecture`
-    const featuresDir = `${base}/docs/features`
-    const knownDir = `${base}/docs/known-issues`
-
-    await mkdir(aiDir, { recursive: true })
-
-    const sections: string[] = []
-
-    const readSection = async (dir: string, title: string): Promise<string[]> => {
-      const lines: string[] = []
-      try {
-        const files = await readdir(dir)
-        for (const f of files) {
-          if (!f.endsWith(".md")) continue
-          const content = await readFile(`${dir}/${f}`, "utf-8")
-          const h1 = content.match(/^# (.+)/m)?.[1] || f.replace(/\.md$/, "")
-          lines.push(`\n### ${h1}\n${content.slice(0, 500).replace(/^#.+$/m, "").trim()}\n`)
-        }
-      } catch {}
-      return lines
-    }
-
-    const archLines = await readSection(archDir, "Architecture")
-    sections.push(`## Architecture\n${archLines.join("\n")}`)
-
-    const featureLines = await readSection(featuresDir, "Features")
-    sections.push(`## Features\n${featureLines.join("\n")}`)
-
-    const knownLines = await readSection(knownDir, "Known Issues")
-    sections.push(`## Known Issues\n${knownLines.join("\n")}`)
-
-    let aiContext = ""
-    try { aiContext = await readFile(`${aiDir}/business-rules.md`, "utf-8") } catch {}
-
-    const stateContent = `# Current System State\n\n_Last regenerated: ${new Date().toISOString()}_\n\n${sections.join("\n")}${aiContext ? `\n## Business Rules\n${aiContext}` : ""}\n`
-    await writeFile(`${aiDir}/current-system-state.md`, stateContent, "utf-8")
-
-    const summaryContent = `# Project Summary\n\n_Generated: ${new Date().toISOString()}_\n\n${sections.slice(0, 2).join("\n")}${knownLines.length > 0 ? `\n### Known Issues (${knownLines.length})\n- See docs/known-issues/` : ""}\n`
-    await writeFile(`${aiDir}/project-summary.md`, summaryContent, "utf-8")
-
-    return JSON.stringify({
-      regenerated: ["docs/ai-context/current-system-state.md", "docs/ai-context/project-summary.md"],
-      sections_compressed: sections.length,
-    })
+    return await generateAiContext(base)
   },
 })
 TOOLEOF
+  manifest_add "$OPCODE_MANIFEST" "$tdir/ai-context-generator.ts" "managed" "$VERSION"
 
   cat > "$tdir/rule-violation-checker.ts" << 'TOOLEOF'
-import { readdir, readFile } from "node:fs/promises"
+// doc-it-managed: true
+// source-version: 1.0.0
 import { tool } from "@opencode-ai/plugin"
-
+import { checkRuleViolations } from "./doc-it-core.js"
 export default tool({
   description: "Detect rule violations: bypassed services, missing audits, direct DB writes, undocumented routes, stale contracts",
-  args: {
-    sourceDirs: tool.schema.string().default("src,app").describe("Comma-separated source directories to scan"),
-  },
+  args: { sourceDirs: tool.schema.string().default("src,app").describe("Comma-separated source directories to scan") },
   async execute(args, context) {
     const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-    const violations: { rule: string; file: string; severity: string }[] = []
-    let passed = 0
-
-    const srcDirs = args.sourceDirs.split(",").map(s => s.trim())
-    const forbiddenPatterns = [
-      { pattern: /db\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct DB write (use service layer)", severity: "high" },
-      { pattern: /prisma\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct Prisma write (use service layer)", severity: "high" },
-      { pattern: /await\s+\w+\s*\.\s*save\s*\(/g, rule: "Direct entity save (use repository)", severity: "medium" },
-    ]
-
-    for (const dir of srcDirs) {
-      await scanDir(`${base}/${dir}`, violations, forbiddenPatterns)
-    }
-
-    let contractFiles: string[] = []
-    try { contractFiles = (await readdir(`${base}/docs/contracts`)).filter(f => f.endsWith(".md")) } catch {}
-    for (const cf of contractFiles) {
-      try {
-        const content = await readFile(`${base}/docs/contracts/${cf}`, "utf-8")
-        if (content.match(/## Forbidden/)) passed++
-      } catch {}
-    }
-
-    let apiDoc = ""
-    try { apiDoc = await readFile(`${base}/docs/api/api-registry.md`, "utf-8") } catch {}
-    for (const dir of srcDirs) {
-      await scanDirForRoutes(`${base}/${dir}`, apiDoc, violations)
-    }
-
-    return JSON.stringify({ violations, passed_checks: passed + (apiDoc ? 1 : 0) })
+    return await checkRuleViolations(args.sourceDirs.split(",").map(s => s.trim()), base)
   },
 })
-
-async function scanDir(dir: string, violations: any[], patterns: any[]) {
-  try {
-    const entries = await readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const full = `${dir}/${entry.name}`
-      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
-        await scanDir(full, violations, patterns)
-      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
-        const content = await readFile(full, "utf-8")
-        for (const p of patterns) {
-          if (content.match(p.pattern)) {
-            violations.push({ rule: p.rule, file: full, severity: p.severity })
-          }
-        }
-      }
-    }
-  } catch {}
-}
-
-async function scanDirForRoutes(dir: string, apiDoc: string, violations: any[]) {
-  try {
-    const entries = await readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const full = `${dir}/${entry.name}`
-      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
-        await scanDirForRoutes(full, apiDoc, violations)
-      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
-        const content = await readFile(full, "utf-8")
-        const routeDefs = content.match(/(?:app|router)\.(?:get|post|put|patch|delete|options)\(['"`][^'"`]+/g)
-        if (routeDefs) {
-          for (const r of routeDefs) {
-            if (!apiDoc.includes(r)) {
-              violations.push({ rule: `Route ${r} not documented in api-registry.md`, file: full, severity: "medium" })
-            }
-          }
-        }
-      }
-    }
-  } catch {}
-}
 TOOLEOF
+  manifest_add "$OPCODE_MANIFEST" "$tdir/rule-violation-checker.ts" "managed" "$VERSION"
 
-  msg "Tools installed → $tdir"
+  msg "Tools installed \u2192 $tdir"
 }
 
 install_opencode_global() {
-  msg "Installing doc-it for opencode..."
+  msg "Installing doc-it for opencode (v$VERSION)..."
+  manifest_init "$OPCODE_MANIFEST"
 
   mkdir -p "$OPCODE_CONFIG_DIR/tools"
 
@@ -759,6 +825,8 @@ install_opencode_global() {
 # ---------------------------------------------------------------------------
 
 install_kilo_plugin_core() {
+  command -v node >/dev/null 2>&1 || { err "node is required but not installed"; return 1; }
+  command -v npm >/dev/null 2>&1 || { err "npm is required but not installed"; return 1; }
   mkdir -p "$KILO_PLUGIN_DIR/dist"
 
   if [ ! -f "$KILO_PLUGIN_DIR/package.json" ]; then
@@ -776,6 +844,7 @@ install_kilo_plugin_core() {
   }
 }
 PKGEOF
+    manifest_add "$KILO_MANIFEST" "$KILO_PLUGIN_DIR/package.json" "managed"
   fi
 
   if [ ! -f "$KILO_PLUGIN_DIR/dist/index.js" ]; then
@@ -786,102 +855,317 @@ let DocItPlugin;
 try { const m = await import("./doc-it.js"); DocItPlugin = m.DocItPlugin; } catch {}
 export { PlanItPlugin, DocItPlugin }
 IDXEOF
+    manifest_add "$KILO_MANIFEST" "$KILO_PLUGIN_DIR/dist/index.js" "managed"
   fi
 
+  # --- kilo.jsonc plugin registration (Node.js, not sed) ---
   KILO_JSONC="$KILO_CONFIG_DIR/kilo.jsonc"
   if [ -f "$KILO_JSONC" ]; then
     if ! grep -q "@opencode-tools/kilo-plugin" "$KILO_JSONC" 2>/dev/null; then
       cp "$KILO_JSONC" "$KILO_JSONC.bak.$(date +%Y%m%d%H%M%S)"
-      if grep -q '"plugin"' "$KILO_JSONC" 2>/dev/null; then
-        sed -i 's/"plugin": \[/"plugin": \[ "@opencode-tools\/kilo-plugin",/' "$KILO_JSONC"
-      else
-        sed -i 's/"$schema": "https:\/\/app.kilo.ai\/config.json",/"$schema": "https:\/\/app.kilo.ai\/config.json",\n  "plugin": ["@opencode-tools\/kilo-plugin"],/' "$KILO_JSONC"
-      fi
-      msg "Registered plugin in kilo.jsonc"
+      manifest_add "$KILO_MANIFEST" "$KILO_JSONC" "managed"
+
+      node -e "
+        const fs = require('fs');
+        const jsoncPath = process.argv[1];
+        const pluginName = process.argv[2];
+        let content = fs.readFileSync(jsoncPath, 'utf-8');
+
+        if (content.includes(pluginName)) {
+          console.log('Plugin @opencode-tools/kilo-plugin already registered in kilo.jsonc');
+          process.exit(0);
+        }
+
+        function stripJsonc(t){let out='',i=0,s=!1,c='';for(;i<t.length;i++){const ch=t[i];if(s){out+=ch;if(ch==='\\'){i++;out+=t[i];continue}if(ch===c)s=!1;continue}if(ch==='"'||ch==="'"){s=!0;c=ch;out+=ch;continue}if(ch==='/'&&t[i+1]==='/'){while(i<t.length&&t[i]!=='\n')i++;continue}if(ch==='/'&&t[i+1]==='*'){i+=2;while(i<t.length-1&&!(t[i]==='*'&&t[i+1]==='/'))i++;i+=2;continue}out+=ch}return out}
+        const noComments = stripJsonc(content);
+        const config = JSON.parse(noComments);
+        config.plugin = config.plugin || [];
+        config.plugin.push(pluginName);
+
+        const pluginStr = JSON.stringify(config.plugin);
+        if (/\"plugin\"\\s*:/.test(content)) {
+          content = content.replace(/\"plugin\"\\s*:\\s*\[[\\s\\S]*?\]/, '\"plugin\": ' + pluginStr);
+        } else {
+          content = content.replace(/(\"\\\$schema\"[^,]+),/, '\$1,\\n  \"plugin\": ' + pluginStr + ',');
+        }
+        fs.writeFileSync(jsoncPath, content);
+        console.log('Registered plugin in kilo.jsonc');
+      " "$KILO_JSONC" "@opencode-tools/kilo-plugin"
+
+      prune_backups "$KILO_JSONC.bak.*" 3
     fi
   fi
 
-  cd "$KILO_PLUGIN_DIR" && npm install --no-audit --no-fund --loglevel=error 2>/dev/null && cd "$OLDPWD" || true
+  (cd "$KILO_PLUGIN_DIR" && npm install --no-audit --no-fund --loglevel=error) || { err "npm install failed in $KILO_PLUGIN_DIR"; return 1; }
 }
 
 install_kilo_global() {
-  msg "Installing doc-it for Kilo CLI..."
+  msg "Installing doc-it for Kilo CLI (v$VERSION)..."
+  manifest_init "$KILO_MANIFEST"
 
   install_kilo_plugin_core
 
-  cat > "$KILO_PLUGIN_DIR/dist/doc-it.js" << 'TOOLEOF'
+  cat > "$KILO_PLUGIN_DIR/dist/doc-it-core.js" << 'KILOCOREEOF'
+// doc-it-managed: true
+// source-version: 1.0.0
 import { readdir, readFile, stat, mkdir, writeFile } from "node:fs/promises"
-import { tool } from "@kilocode/plugin"
 
-const DAY_MS = 86400000
+async function getRecentlyChanged(base) {
+  try {
+    const { execSync } = await import("node:child_process")
+    const out = execSync("git diff --name-only HEAD~1..HEAD 2>/dev/null || git diff --name-only 2>/dev/null || echo", { cwd: base, encoding: "utf-8" })
+    return out.trim().split("\n").filter(Boolean)
+  } catch {
+    console.warn("doc-drift-checker: not a git repository or git unavailable; falling back to full src/ scan")
+    return ["src/"]
+  }
+}
+
+async function walkDocs(dir, prefix) {
+  const entries = await readdir(dir, { withFileTypes: true })
+  const results = []
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const sub = await walkDocs(dir + "/" + entry.name, prefix ? prefix + "/" + entry.name : entry.name)
+      results.push(...sub)
+    } else if (entry.name.endsWith(".md")) {
+      results.push(prefix ? prefix + "/" + entry.name : entry.name)
+    }
+  }
+  return results
+}
+
+async function listDocs(dir) {
+  try {
+    return await walkDocs(dir, "")
+  } catch {
+    return []
+  }
+}
+
+function parseYamlList(frontmatter, key) {
+  const re = new RegExp("^" + key + ":\\s*((?:\\n\\s+-\\s+.*)+)", "m")
+  const m = frontmatter.match(re)
+  if (m) return m[1].trim().split("\n").map(s => s.replace(/^\s*-\s*/, "").trim())
+  const inline = frontmatter.match(new RegExp("^" + key + ":\\s*\\[([^\\]]+)\\]", "m"))
+  if (inline) return inline[1].split(",").map(s => s.trim().replace(/^['"]|['"]$/g, ""))
+  const flat = frontmatter.match(new RegExp("^" + key + ":\\s*(.+)$", "m"))
+  return flat ? flat[1].split(",").map(s => s.trim()) : []
+}
+
+async function scanDirForPatterns(dir, violations, patterns) {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const full = dir + "/" + entry.name
+      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
+        await scanDirForPatterns(full, violations, patterns)
+      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
+        const content = await readFile(full, "utf-8")
+        for (const p of patterns) {
+          if (content.match(p.pattern)) {
+            violations.push({ rule: p.rule, file: full, severity: p.severity })
+          }
+        }
+      }
+    }
+  } catch { console.warn("doc-it: error scanning " + dir + " for forbidden patterns") }
+}
+
+async function scanDirForRoutes(dir, apiDoc, violations) {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const full = dir + "/" + entry.name
+      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
+        await scanDirForRoutes(full, apiDoc, violations)
+      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
+        const content = await readFile(full, "utf-8")
+        const routeDefs = content.match(/(?:app|router)\s*(?:\.route\([^)]+\))?\s*\.(?:get|post|put|patch|delete|options)\(['"`][^'"`]+/g)
+        if (routeDefs) {
+          for (const r of routeDefs) {
+            if (!apiDoc.includes(r)) {
+              violations.push({ rule: "Route " + r + " not documented in api-registry.md", file: full, severity: "medium" })
+            }
+          }
+        }
+      }
+    }
+  } catch { console.warn("doc-it: error scanning " + dir + " for routes") }
+}
+
+export async function checkDocDrift(args, base) {
+  const stale = []
+  let healthy = 0
+  const changedFiles = args.changedFiles ? args.changedFiles.split(",").map(s => s.trim()) : await getRecentlyChanged(base)
+  const featureDocs = await listDocs(base + "/docs/features")
+  const apiDocs = await listDocs(base + "/docs/api")
+  const dbDocs = await listDocs(base + "/docs/database")
+
+  for (const file of changedFiles) {
+    if (file.startsWith("docs/")) continue
+    if ((file.includes("/routes/") || file.match(/\.route\./)) && apiDocs.length === 0) {
+      stale.push({ doc: "docs/api/api-registry.md", reason: "Route file changed (" + file + ") but no API docs found", severity: "important" }); continue
+    }
+    if (file.match(/schema|model|migration|\.sql/) && dbDocs.length === 0) {
+      stale.push({ doc: "docs/database/schema-overview.md", reason: "Schema file changed (" + file + ") but no DB docs found", severity: "critical" }); continue
+    }
+    if (file.match(/src\/(features|modules|components)/)) {
+      const featureName = file.split("/").slice(2, 3).join("/")
+      if (!featureDocs.find(f => f.includes(featureName))) {
+        stale.push({ doc: "docs/features/" + featureName + "/", reason: "Feature file changed (" + file + ") but no feature docs found", severity: "important" })
+      }
+    }
+  }
+
+  for (const docs of [featureDocs, apiDocs, dbDocs]) {
+    for (const doc of docs) {
+      try {
+        const content = await readFile(base + "/" + doc, "utf-8")
+        const refs = content.match(/(?:`)?[\w./-]+\.\w{1,4}(?:`)?/g) || []
+        for (const ref of refs) {
+          const clean = ref.replace(/`/g, "")
+          if ((clean.startsWith(".") || clean.startsWith("/") || clean.includes("/")) && !clean.startsWith("http")) {
+            try { await stat(base + "/" + clean) } catch {
+              if (!stale.find(s => s.doc === doc)) stale.push({ doc, reason: "Referenced file " + clean + " no longer exists", severity: "important" })
+            }
+          }
+        }
+        healthy++
+      } catch { healthy++ }
+    }
+  }
+  return JSON.stringify({ count: changedFiles.length, stale, healthy_count: healthy })
+}
+
+export async function createChangelog(args, base) {
+  const changelogDir = base + "/docs/changelogs"
+  await mkdir(changelogDir, { recursive: true })
+  const date = new Date().toISOString().split("T")[0]
+  const slug = args.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+  const filename = date + "-" + slug + ".md"
+  const fullPath = changelogDir + "/" + filename
+  const header = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it changelog-generator -->\n<!-- source: changelog-generator.ts -->\n<!-- generated-at: " + new Date().toISOString() + " -->\n\n"
+  const content = "# " + date + " \u2014 " + args.title + "\n\n" + args.changes + (args.features ? "\n\n**Affected features:** " + args.features : "") + (args.breaking ? "\n\n## Breaking Changes\n\n" + args.breaking : "") + "\n"
+  await writeFile(fullPath, header + content, "utf-8")
+  return JSON.stringify({ changelog: "docs/changelogs/" + filename, path: fullPath })
+}
+
+export async function buildTraceability(base) {
+  const archDir = base + "/docs/architecture/generated"
+  await mkdir(archDir, { recursive: true })
+  const featureDocsDir = base + "/docs/features"
+  const traceability = []
+
+  try {
+    const entries = await readdir(featureDocsDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.name.endsWith(".md")) continue
+      const content = await readFile(featureDocsDir + "/" + entry.name, "utf-8")
+      const frontmatter = content.match(/^---\n([\s\S]*?)\n---/)?.[1] || ""
+      traceability.push({
+        feature: entry.name.replace(/\.md$/, ""),
+        files: parseYamlList(frontmatter, "source_dirs"),
+        routes: parseYamlList(frontmatter, "related_routes"),
+        tables: parseYamlList(frontmatter, "related_tables"),
+        tests: parseYamlList(frontmatter, "testing_workflows"),
+        docs: [entry.name]
+      })
+    }
+  } catch {}
+
+  let rows = ""
+  for (const t of traceability) {
+    rows += "| " + t.feature + " | " + (t.files.join(", ") || "\u2014") + " | " + (t.routes.join(", ") || "\u2014") + " | " + (t.tables.join(", ") || "\u2014") + " | " + (t.tests.join(", ") || "\u2014") + " | " + (t.docs.join(", ") || "\u2014") + " |\n"
+  }
+
+  const timestamp = new Date().toISOString()
+  const mapContent = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it traceability-generator -->\n<!-- source: traceability-generator.ts -->\n<!-- generated-at: " + timestamp + " -->\n\n# Traceability Map\n\n_Generated: " + timestamp + "_\n\n| Feature | Files | Routes | Tables | Tests | Docs |\n|---------|-------|--------|--------|-------|------|\n" + rows + "\n## Summary\n\n- **Features tracked:** " + traceability.length + "\n- **Total routes:** " + traceability.reduce((a, t) => a + t.routes.length, 0) + "\n- **Total tables:** " + traceability.reduce((a, t) => a + t.tables.length, 0) + "\n"
+  await writeFile(archDir + "/traceability.md", mapContent, "utf-8")
+  return JSON.stringify({ traceability_count: traceability.length, path: "docs/architecture/generated/traceability.md" })
+}
+
+export async function generateAiContext(base) {
+  const aiGenDir = base + "/docs/ai-context/generated"
+  const archDir = base + "/docs/architecture"
+  const featuresDir = base + "/docs/features"
+  const knownDir = base + "/docs/known-issues"
+  await mkdir(aiGenDir, { recursive: true })
+  const sections = []
+
+  const readSection = async (dir) => {
+    const lines = []
+    try {
+      const files = await readdir(dir)
+      for (const f of files) {
+        if (!f.endsWith(".md")) continue
+        const content = await readFile(dir + "/" + f, "utf-8")
+        const h1 = content.match(/^# (.+)/m)?.[1] || f.replace(/\.md$/, "")
+        lines.push("\n### " + h1 + "\n" + content.slice(0, 500).replace(/^#.+$/m, "").trim() + "\n")
+      }
+    } catch {}
+    return lines
+  }
+
+  sections.push("## Architecture\n" + (await readSection(archDir)).join("\n"))
+  sections.push("## Features\n" + (await readSection(featuresDir)).join("\n"))
+  sections.push("## Known Issues\n" + (await readSection(knownDir)).join("\n"))
+
+  const timestamp = new Date().toISOString()
+  const stateContent = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it ai-context-generator -->\n<!-- source: ai-context-generator.ts -->\n<!-- generated-at: " + timestamp + " -->\n\n# Current System State\n\n_Last regenerated: " + timestamp + "_\n\n" + sections.join("\n") + "\n"
+  await writeFile(aiGenDir + "/current-system-state.md", stateContent, "utf-8")
+  const summaryContent = "<!-- GENERATED FILE -- DO NOT EDIT -->\n<!-- generator: doc-it ai-context-generator -->\n<!-- source: ai-context-generator.ts -->\n<!-- generated-at: " + timestamp + " -->\n\n# Project Summary\n\n_Generated: " + timestamp + "_\n\n" + sections.slice(0, 2).join("\n") + "\n"
+  await writeFile(aiGenDir + "/project-summary.md", summaryContent, "utf-8")
+  return JSON.stringify({ regenerated: ["docs/ai-context/generated/current-system-state.md", "docs/ai-context/generated/project-summary.md"], sections_compressed: sections.length })
+}
+
+const forbiddenPatterns = [
+  { pattern: /db\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct DB write (use service layer)", severity: "high" },
+  { pattern: /prisma\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct Prisma write (use service layer)", severity: "high" },
+  { pattern: /await\s+\w+\s*\.\s*save\s*\(/g, rule: "Direct entity save (use repository)", severity: "medium" },
+]
+
+export async function checkRuleViolations(sourceDirs, base) {
+  const violations = []
+  let passed = 0
+  for (const dir of sourceDirs) {
+    await scanDirForPatterns(base + "/" + dir, violations, forbiddenPatterns)
+  }
+  let contractFiles = []
+  try { contractFiles = (await readdir(base + "/docs/contracts")).filter(f => f.endsWith(".md")) } catch {}
+  for (const cf of contractFiles) {
+    try {
+      const content = await readFile(base + "/docs/contracts/" + cf, "utf-8")
+      if (content.match(/## Forbidden/)) passed++
+    } catch {}
+  }
+  let apiDoc = ""
+  try { apiDoc = await readFile(base + "/docs/api/api-registry.md", "utf-8") } catch {}
+  for (const dir of sourceDirs) {
+    await scanDirForRoutes(base + "/" + dir, apiDoc, violations)
+  }
+  return JSON.stringify({ violations, passed_checks: passed + (apiDoc ? 1 : 0) })
+}
+KILOCOREEOF
+  manifest_add "$KILO_MANIFEST" "$KILO_PLUGIN_DIR/dist/doc-it-core.js" "managed" "$VERSION"
+
+  cat > "$KILO_PLUGIN_DIR/dist/doc-it.js" << 'KILOEOF'
+// doc-it-managed: true
+// source-version: 1.0.0
+import { tool } from "@kilocode/plugin"
+import { checkDocDrift, createChangelog, buildTraceability, generateAiContext, checkRuleViolations } from "./doc-it-core.js"
 
 const DocItPlugin = async (ctx) => {
   return {
     tool: {
       "doc-drift-checker": tool({
         description: "Check for stale/missing documentation by scanning changed source files and cross-referencing with docs/",
-        args: {
-          changedFiles: tool.schema.string().optional().describe("Comma-separated list of changed files (auto-detected if not provided)"),
-        },
+        args: { changedFiles: tool.schema.string().optional().describe("Comma-separated list of changed files (auto-detected if not provided)") },
         async execute(args, context) {
           const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-          const stale = []
-          let healthy = 0
-
-          const changedFiles = args.changedFiles
-            ? args.changedFiles.split(",").map(s => s.trim())
-            : await getRecentlyChanged(base)
-
-          const featureDocs = await listDocs(`${base}/docs/features`)
-          const apiDocs = await listDocs(`${base}/docs/api`)
-          const dbDocs = await listDocs(`${base}/docs/database`)
-
-          for (const file of changedFiles) {
-            if (file.startsWith("docs/")) continue
-
-            if ((file.includes("/routes/") || file.match(/\.route\./)) && apiDocs.length === 0) {
-              stale.push({ doc: "docs/api/api-registry.md", reason: `Route file changed (${file}) but no API docs found`, severity: "important" })
-              continue
-            }
-
-            if (file.match(/schema|model|migration|\.sql/) && dbDocs.length === 0) {
-              stale.push({ doc: "docs/database/schema-overview.md", reason: `Schema file changed (${file}) but no DB docs found`, severity: "critical" })
-              continue
-            }
-
-            if (file.match(/src\/(features|modules|components)/)) {
-              const featureName = file.split("/").slice(2, 3).join("/")
-              const matchingFeature = featureDocs.find(f => f.includes(featureName))
-              if (!matchingFeature) {
-                stale.push({ doc: `docs/features/${featureName}/`, reason: `Feature file changed (${file}) but no feature docs found`, severity: "important" })
-              }
-            }
-          }
-
-          for (const docs of [featureDocs, apiDocs, dbDocs]) {
-            for (const doc of docs) {
-              try {
-                const content = await readFile(`${base}/${doc}`, "utf-8")
-                const refs = content.match(/(?:`)?[\w./-]+\.\w{1,4}(?:`)?/g) || []
-                for (const ref of refs) {
-                  const clean = ref.replace(/`/g, "")
-                  if ((clean.startsWith(".") || clean.startsWith("/") || clean.includes("/")) && !clean.startsWith("http")) {
-                    try { await stat(`${base}/${clean}`) } catch {
-                      if (!stale.find(s => s.doc === doc)) {
-                        stale.push({ doc, reason: `Referenced file ${clean} no longer exists`, severity: "important" })
-                      }
-                    }
-                  }
-                }
-                healthy++
-              } catch { healthy++ }
-            }
-          }
-
-          return JSON.stringify({ count: changedFiles.length, stale, healthy_count: healthy })
+          return await checkDocDrift(args, base)
         },
       }),
-
       "changelog-generator": tool({
         description: "Create a changelog entry in docs/changelogs/",
         args: {
@@ -892,236 +1176,58 @@ const DocItPlugin = async (ctx) => {
         },
         async execute(args, context) {
           const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-          const changelogDir = `${base}/docs/changelogs`
-          await mkdir(changelogDir, { recursive: true })
-
-          const date = new Date().toISOString().split("T")[0]
-          const slug = args.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
-          const filename = `${date}-${slug}.md`
-          const fullPath = `${changelogDir}/${filename}`
-
-          const content = `# ${date} — ${args.title}\n\n${args.changes}\n${args.features ? `\n**Affected features:** ${args.features}` : ""}${args.breaking ? `\n\n## Breaking Changes\n\n${args.breaking}` : ""}\n`
-
-          await writeFile(fullPath, content, "utf-8")
-          return JSON.stringify({ changelog: `docs/changelogs/${filename}`, path: fullPath })
+          return await createChangelog(args, base)
         },
       }),
-
       "traceability-generator": tool({
-        description: "Build a feature → files → routes → tables → tests → docs traceability map in docs/architecture/traceability.md",
+        description: "Build a feature \u2192 files \u2192 routes \u2192 tables \u2192 tests \u2192 docs traceability map in docs/architecture/generated/traceability.md",
         args: {},
         async execute(_args, context) {
           const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-          const archDir = `${base}/docs/architecture`
-          await mkdir(archDir, { recursive: true })
-
-          const featureDocsDir = `${base}/docs/features`
-          const traceability = []
-
-          try {
-            const entries = await readdir(featureDocsDir, { withFileTypes: true })
-            for (const entry of entries) {
-              if (!entry.name.endsWith(".md")) continue
-              const content = await readFile(`${featureDocsDir}/${entry.name}`, "utf-8")
-              const feature = entry.name.replace(/\.md$/, "")
-
-              const files = content.match(/source_dirs:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-              const routes = content.match(/related_routes:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-              const tables = content.match(/related_tables:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-              const tests = content.match(/testing_workflows:\s*([^\n]+)/)?.[1].split(",").map(s => s.trim().replace(/^- /, "")) || []
-
-              traceability.push({ feature, files, routes, tables, tests, docs: [entry.name] })
-            }
-          } catch {}
-
-          let rows = ""
-          for (const t of traceability) {
-            rows += `| ${t.feature} | ${t.files.join(", ") || "—"} | ${t.routes.join(", ") || "—"} | ${t.tables.join(", ") || "—"} | ${t.tests.join(", ") || "—"} | ${t.docs.join(", ") || "—"} |\n`
-          }
-
-          const mapContent = `# Traceability Map\n\n_Generated: ${new Date().toISOString()}_\n\n| Feature | Files | Routes | Tables | Tests | Docs |\n|---------|-------|--------|--------|-------|------|\n${rows}\n## Summary\n\n- **Features tracked:** ${traceability.length}\n- **Total routes:** ${traceability.reduce((a, t) => a + t.routes.length, 0)}\n- **Total tables:** ${traceability.reduce((a, t) => a + t.tables.length, 0)}\n`
-
-          await writeFile(`${archDir}/traceability.md`, mapContent, "utf-8")
-          return JSON.stringify({ traceability_count: traceability.length, path: "docs/architecture/traceability.md" })
+          return await buildTraceability(base)
         },
       }),
-
       "ai-context-generator": tool({
         description: "Regenerate ai-context docs (current-system-state.md + project-summary.md) from the project docs tree",
         args: {},
         async execute(_args, context) {
           const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-          const aiDir = `${base}/docs/ai-context`
-          const archDir = `${base}/docs/architecture`
-          const featuresDir = `${base}/docs/features`
-          const knownDir = `${base}/docs/known-issues`
-
-          await mkdir(aiDir, { recursive: true })
-
-          const sections = []
-
-          const readSection = async (dir, title) => {
-            const lines = []
-            try {
-              const files = await readdir(dir)
-              for (const f of files) {
-                if (!f.endsWith(".md")) continue
-                const content = await readFile(`${dir}/${f}`, "utf-8")
-                const h1 = content.match(/^# (.+)/m)?.[1] || f.replace(/\.md$/, "")
-                lines.push(`\n### ${h1}\n${content.slice(0, 500).replace(/^#.+$/m, "").trim()}\n`)
-              }
-            } catch {}
-            return lines
-          }
-
-          const archLines = await readSection(archDir, "Architecture")
-          sections.push(`## Architecture\n${archLines.join("\n")}`)
-
-          const featureLines = await readSection(featuresDir, "Features")
-          sections.push(`## Features\n${featureLines.join("\n")}`)
-
-          const knownLines = await readSection(knownDir, "Known Issues")
-          sections.push(`## Known Issues\n${knownLines.join("\n")}`)
-
-          let aiContext = ""
-          try { aiContext = await readFile(`${aiDir}/business-rules.md`, "utf-8") } catch {}
-
-          const stateContent = `# Current System State\n\n_Last regenerated: ${new Date().toISOString()}_\n\n${sections.join("\n")}${aiContext ? `\n## Business Rules\n${aiContext}` : ""}\n`
-          await writeFile(`${aiDir}/current-system-state.md`, stateContent, "utf-8")
-
-          const summaryContent = `# Project Summary\n\n_Generated: ${new Date().toISOString()}_\n\n${sections.slice(0, 2).join("\n")}${knownLines.length > 0 ? `\n### Known Issues (${knownLines.length})\n- See docs/known-issues/` : ""}\n`
-          await writeFile(`${aiDir}/project-summary.md`, summaryContent, "utf-8")
-
-          return JSON.stringify({
-            regenerated: ["docs/ai-context/current-system-state.md", "docs/ai-context/project-summary.md"],
-            sections_compressed: sections.length,
-          })
+          return await generateAiContext(base)
         },
       }),
-
       "rule-violation-checker": tool({
         description: "Detect rule violations: bypassed services, missing audits, direct DB writes, undocumented routes, stale contracts",
-        args: {
-          sourceDirs: tool.schema.string().default("src,app").describe("Comma-separated source directories to scan"),
-        },
+        args: { sourceDirs: tool.schema.string().default("src,app").describe("Comma-separated source directories to scan") },
         async execute(args, context) {
           const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
-          const violations = []
-          let passed = 0
-
-          const srcDirs = args.sourceDirs.split(",").map(s => s.trim())
-          const forbiddenPatterns = [
-            { pattern: /db\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct DB write (use service layer)", severity: "high" },
-            { pattern: /prisma\.\w+\.\s*(create|update|delete|upsert)/g, rule: "Direct Prisma write (use service layer)", severity: "high" },
-            { pattern: /await\s+\w+\s*\.\s*save\s*\(/g, rule: "Direct entity save (use repository)", severity: "medium" },
-          ]
-
-          for (const dir of srcDirs) {
-            await scanDir(`${base}/${dir}`, violations, forbiddenPatterns)
-          }
-
-          let contractFiles = []
-          try { contractFiles = (await readdir(`${base}/docs/contracts`)).filter(f => f.endsWith(".md")) } catch {}
-          for (const cf of contractFiles) {
-            try {
-              const content = await readFile(`${base}/docs/contracts/${cf}`, "utf-8")
-              if (content.match(/## Forbidden/)) passed++
-            } catch {}
-          }
-
-          let apiDoc = ""
-          try { apiDoc = await readFile(`${base}/docs/api/api-registry.md`, "utf-8") } catch {}
-          for (const dir of srcDirs) {
-            await scanDirForRoutes(`${base}/${dir}`, apiDoc, violations)
-          }
-
-          return JSON.stringify({ violations, passed_checks: passed + (apiDoc ? 1 : 0) })
+          return await checkRuleViolations(args.sourceDirs.split(",").map(s => s.trim()), base)
         },
       }),
     }
   }
-}
-
-async function getRecentlyChanged(base) {
-  try {
-    const { execSync } = await import("node:child_process")
-    const out = execSync("git diff --name-only HEAD~1..HEAD 2>/dev/null || git diff --name-only 2>/dev/null || echo", { cwd: base, encoding: "utf-8" })
-    return out.trim().split("\n").filter(Boolean)
-  } catch {
-    return ["src/"]
-  }
-}
-
-async function listDocs(dir) {
-  try {
-    const files = await readdir(dir, { recursive: true })
-    return files.filter(f => f.endsWith(".md")).map(f => `docs/${dir.split("/docs/")[1]}/${f}`)
-  } catch {
-    return []
-  }
-}
-
-async function scanDir(dir, violations, patterns) {
-  try {
-    const entries = await readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const full = `${dir}/${entry.name}`
-      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
-        await scanDir(full, violations, patterns)
-      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
-        const content = await readFile(full, "utf-8")
-        for (const p of patterns) {
-          if (content.match(p.pattern)) {
-            violations.push({ rule: p.rule, file: full, severity: p.severity })
-          }
-        }
-      }
-    }
-  } catch {}
-}
-
-async function scanDirForRoutes(dir, apiDoc, violations) {
-  try {
-    const entries = await readdir(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const full = `${dir}/${entry.name}`
-      if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
-        await scanDirForRoutes(full, apiDoc, violations)
-      } else if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js"))) {
-        const content = await readFile(full, "utf-8")
-        const routeDefs = content.match(/(?:app|router)\.(?:get|post|put|patch|delete|options)\(['"`][^'"`]+/g)
-        if (routeDefs) {
-          for (const r of routeDefs) {
-            if (!apiDoc.includes(r)) {
-              violations.push({ rule: `Route ${r} not documented in api-registry.md`, file: full, severity: "medium" })
-            }
-          }
-        }
-      }
-    }
-  } catch {}
 }
 
 export { DocItPlugin }
-TOOLEOF
+KILOEOF
+  manifest_add "$KILO_MANIFEST" "$KILO_PLUGIN_DIR/dist/doc-it.js" "managed" "$VERSION"
 
   msg "doc-it Kilo plugin installed → $KILO_PLUGIN_DIR"
   info "  Tools: doc-drift-checker, changelog-generator, traceability-generator, ai-context-generator, rule-violation-checker"
 }
 
 # ---------------------------------------------------------------------------
-# AGENTS.md hooks
+# AGENTS.md hooks (sentinel-based)
 # ---------------------------------------------------------------------------
 
 install_agents_md_opencode() {
   local dir="$1"
-  cat >> "$dir/AGENTS.md" << 'EOF'
-
+  local agents_block
+  agents_block=$(cat << 'AGENTS_BLOCK'
 ## doc-it: Documentation Pipeline (Build mode)
 Every EXECUTE mode task MUST follow this pipeline:
 
-1. **LOAD CONTEXT** — Read `docs/ai-context/current-system-state.md` and `project-summary.md`
-2. **LOAD RULES** — Read `.ai/execute-rules.md`, `doc-rules.md`, `architecture-rules.md`
+1. **LOAD CONTEXT** — Read `docs/ai-context/generated/current-system-state.md` and `project-summary.md`
+2. **LOAD RULES** — Read `.ai/execute-rules.md`, `.ai/doc-rules.md`, `.ai/architecture-rules.md`
 3. **ANALYZE** — Identify changed files and map affected features
 4. **CHECK DOCS** — Run `doc-drift-checker` to find stale docs
 5. **IMPLEMENT** — Make code changes
@@ -1133,19 +1239,21 @@ Every EXECUTE mode task MUST follow this pipeline:
 11. **COMPLETE** — Archive plan with edit+mv (prepend completion timestamp, then mv to `.agents/plans/completed/`)
 
 Tasks FAIL if any doc step is skipped.
-EOF
+AGENTS_BLOCK
+)
+  replace_managed_block "$dir/AGENTS.md" "$DOCIT_BEGIN" "$DOCIT_END" "$agents_block"
   msg "AGENTS.md updated (opencode) → $dir/AGENTS.md"
 }
 
 install_agents_md_kilo() {
   local dir="$1"
-  cat >> "$dir/AGENTS.md" << 'EOF'
-
+  local agents_block
+  agents_block=$(cat << 'AGENTS_BLOCK'
 ## doc-it: Documentation Pipeline (Build mode)
 Every EXECUTE mode task MUST follow this pipeline:
 
-1. **LOAD CONTEXT** — Read `docs/ai-context/current-system-state.md` and `project-summary.md`
-2. **LOAD RULES** — Read `.ai/execute-rules.md`, `doc-rules.md`, `architecture-rules.md`
+1. **LOAD CONTEXT** — Read `docs/ai-context/generated/current-system-state.md` and `project-summary.md`
+2. **LOAD RULES** — Read `.ai/execute-rules.md`, `.ai/doc-rules.md`, `.ai/architecture-rules.md`
 3. **ANALYZE** — Identify changed files and map affected features
 4. **CHECK DOCS** — Run `doc-drift-checker` to find stale docs
 5. **IMPLEMENT** — Make code changes
@@ -1157,7 +1265,9 @@ Every EXECUTE mode task MUST follow this pipeline:
 11. **COMPLETE** — Archive plan with edit+mv (prepend completion timestamp, then mv to `.agents/plans/completed/`)
 
 Tasks FAIL if any doc step is skipped.
-EOF
+AGENTS_BLOCK
+)
+  replace_managed_block "$dir/AGENTS.md" "$DOCIT_BEGIN" "$DOCIT_END" "$agents_block"
   msg "AGENTS.md updated (Kilo) → $dir/AGENTS.md"
 }
 
@@ -1165,15 +1275,16 @@ EOF
 # Project init (shared)
 # ---------------------------------------------------------------------------
 
-install_project() {
+init_project() {
   local cli="$1"
   local dir="$2"
   mkdir -p "$dir"
   msg "Initializing doc-it in project: $dir"
 
-  mkdir -p $dir/$DOCS_TREE $dir/.ai
+  mkdir -p "$dir/docs/$DOCS_TREE_BRACE" "$dir/.ai"
 
   create_docs "$dir"
+  create_ai_rules "$dir"
 
   case "$cli" in
     kilo)
@@ -1181,10 +1292,14 @@ install_project() {
       install_agents_md_kilo "$dir"
       ;;
     opencode|none)
+      mkdir -p "$dir/.opencode/plans" "$dir/.opencode/tools" \
+        "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
       if [ -d "$OPCODE_CONFIG_DIR/tools" ]; then
-        cp "$OPCODE_CONFIG_DIR/tools"/*.ts "$dir/.opencode/tools/" 2>/dev/null || true
+        for f in "$OPCODE_CONFIG_DIR/tools"/*.ts; do
+          [ -f "$f" ] || continue
+          safe_cp_tool "$f" "$dir/.opencode/tools/$(basename "$f")"
+        done
       fi
-      mkdir -p "$dir/.opencode/plans" "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
       install_agents_md_opencode "$dir"
       ;;
   esac
@@ -1199,14 +1314,28 @@ install_project() {
 uninstall_opencode() {
   warn "Uninstalling doc-it (opencode)..."
 
-  for f in doc-drift-checker.ts changelog-generator.ts traceability-generator.ts ai-context-generator.ts rule-violation-checker.ts; do
-    if [ -f "$OPCODE_CONFIG_DIR/tools/$f" ]; then
-      rm "$OPCODE_CONFIG_DIR/tools/$f"
-      info "  Removed: $OPCODE_CONFIG_DIR/tools/$f"
-    fi
-  done
+  if [ -f "$OPCODE_MANIFEST" ]; then
+    node -e "
+      const fs = require('fs');
+      const m = JSON.parse(fs.readFileSync('$OPCODE_MANIFEST', 'utf-8'));
+      for (const f of m.files) {
+        if (f.ownership === 'user') continue;
+        try {
+          fs.unlinkSync(f.path);
+          console.log('  Removed: ' + f.path);
+        } catch (e) {
+          if (e.code !== 'ENOENT') console.error('  Error removing ' + f.path + ': ' + e.message);
+        }
+      }
+    "
+    rm -f "$OPCODE_MANIFEST"
+  else
+    for f in doc-drift-checker.ts changelog-generator.ts traceability-generator.ts ai-context-generator.ts rule-violation-checker.ts; do
+      [ -f "$OPCODE_CONFIG_DIR/tools/$f" ] && rm "$OPCODE_CONFIG_DIR/tools/$f" && info "  Removed: $f"
+    done
+  fi
 
-  rmdir "$OPCODE_CONFIG_DIR/tools" 2>/dev/null || true
+  safe_rmdir "$OPCODE_CONFIG_DIR/tools"
 
   warn "Note: docs/ tree and AGENTS.md hooks in projects must be removed manually."
   msg "Global uninstall complete"
@@ -1215,9 +1344,31 @@ uninstall_opencode() {
 uninstall_kilo() {
   warn "Uninstalling doc-it (Kilo)..."
 
-  if [ -f "$KILO_PLUGIN_DIR/dist/doc-it.js" ]; then
-    rm "$KILO_PLUGIN_DIR/dist/doc-it.js"
-    info "  Removed: $KILO_PLUGIN_DIR/dist/doc-it.js"
+  if [ -f "$KILO_MANIFEST" ]; then
+    node -e "
+      const fs = require('fs');
+      const m = JSON.parse(fs.readFileSync('$KILO_MANIFEST', 'utf-8'));
+      for (const f of m.files) {
+        if (f.ownership === 'user') continue;
+        try {
+          const stat = fs.statSync(f.path);
+          if (stat.isDirectory()) {
+            fs.rmSync(f.path, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(f.path);
+          }
+          console.log('  Removed: ' + f.path);
+        } catch (e) {
+          if (e.code !== 'ENOENT') console.error('  Error removing ' + f.path + ': ' + e.message);
+        }
+      }
+    "
+    rm -f "$KILO_MANIFEST"
+  else
+    if [ -f "$KILO_PLUGIN_DIR/dist/doc-it.js" ]; then
+      rm "$KILO_PLUGIN_DIR/dist/doc-it.js"
+      info "  Removed: $KILO_PLUGIN_DIR/dist/doc-it.js"
+    fi
   fi
 
   warn "Note: docs/ tree and AGENTS.md hooks in projects must be removed manually."
@@ -1230,19 +1381,25 @@ uninstall_kilo() {
 
 show_status_opencode() {
   echo ""
-  info "=== doc-it status (opencode) ==="
+  info "=== doc-it status (opencode) v$VERSION ==="
   echo ""
 
   local all_ok=true
 
   for f in doc-drift-checker.ts changelog-generator.ts traceability-generator.ts ai-context-generator.ts rule-violation-checker.ts; do
     if [ -f "$OPCODE_CONFIG_DIR/tools/$f" ]; then
-      msg "  ✅ tools/$f"
+      msg "  \u2705 tools/$f"
     else
-      err "  ❌ tools/$f"
+      err "  \u274c tools/$f"
       all_ok=false
     fi
   done
+
+  if [ -f "$OPCODE_MANIFEST" ]; then
+    msg "  \u2705 Manifest: $OPCODE_MANIFEST"
+  else
+    warn "  \u2b1c No manifest"
+  fi
 
   echo ""
   if $all_ok; then
@@ -1255,30 +1412,136 @@ show_status_opencode() {
 
 show_status_kilo() {
   echo ""
-  info "=== doc-it status (Kilo) ==="
+  info "=== doc-it status (Kilo) v$VERSION ==="
   echo ""
 
+  local all_ok=true
+
   if [ -f "$KILO_PLUGIN_DIR/dist/doc-it.js" ]; then
-    msg "  ✅ DocItPlugin: $KILO_PLUGIN_DIR/dist/doc-it.js"
+    msg "  \u2705 DocItPlugin: $KILO_PLUGIN_DIR/dist/doc-it.js"
   else
-    err "  ❌ DocItPlugin missing"
+    err "  \u274c DocItPlugin missing"
+    all_ok=false
   fi
 
   if [ -f "$KILO_PLUGIN_DIR/dist/index.js" ]; then
-    msg "  ✅ Plugin index: $KILO_PLUGIN_DIR/dist/index.js"
+    msg "  \u2705 Plugin index: $KILO_PLUGIN_DIR/dist/index.js"
   else
-    err "  ❌ Plugin index missing"
+    err "  \u274c Plugin index missing"
+    all_ok=false
   fi
 
   if grep -q "@opencode-tools/kilo-plugin" "$KILO_CONFIG_DIR/kilo.jsonc" 2>/dev/null; then
-    msg "  ✅ Plugin registered in kilo.jsonc"
+    msg "  \u2705 Plugin registered in kilo.jsonc"
   else
-    warn "  ⬜ Plugin not registered in kilo.jsonc"
+    warn "  \u2b1c Plugin not registered in kilo.jsonc"
+  fi
+
+  if [ -f "$KILO_MANIFEST" ]; then
+    msg "  \u2705 Manifest: $KILO_MANIFEST"
+  else
+    warn "  \u2b1c No manifest"
   fi
 
   echo ""
-  msg "doc-it (Kilo) status complete"
+  if $all_ok; then
+    msg "doc-it (Kilo) is fully installed"
+  else
+    err "doc-it (Kilo) is incomplete — run 'install' to fix"
+  fi
   echo ""
+}
+
+# ---------------------------------------------------------------------------
+# Doctor
+# ---------------------------------------------------------------------------
+
+doctor_opencode() {
+  echo ""
+  info "=== doc-it doctor (opencode) v$VERSION ==="
+  echo ""
+
+  local errors=0
+  local warnings=0
+
+  if [ -f "$OPCODE_MANIFEST" ]; then
+    msg "  \u2705 Manifest present"
+  else
+    warn "  \u2b1c No manifest"
+    warnings=$((warnings + 1))
+  fi
+
+  for f in doc-drift-checker.ts changelog-generator.ts traceability-generator.ts ai-context-generator.ts rule-violation-checker.ts; do
+    local fp="$OPCODE_CONFIG_DIR/tools/$f"
+    if [ -f "$fp" ]; then
+      if head -3 "$fp" | grep -q "doc-it-managed: true"; then
+        msg "  \u2705 $f (managed)"
+      else
+        warn "  \u26a0 $f (user-modified or missing managed header)"
+        warnings=$((warnings + 1))
+      fi
+    else
+      err "  \u274c $f missing"
+      errors=$((errors + 1))
+    fi
+  done
+
+  echo ""
+  if [ "$errors" -eq 0 ] && [ "$warnings" -eq 0 ]; then
+    msg "doc-it (opencode): healthy"
+  elif [ "$errors" -eq 0 ]; then
+    warn "doc-it (opencode): $warnings warning(s)"
+  else
+    err "doc-it (opencode): $errors error(s), $warnings warning(s)"
+  fi
+  echo ""
+  return "$errors"
+}
+
+doctor_kilo() {
+  echo ""
+  info "=== doc-it doctor (Kilo) v$VERSION ==="
+  echo ""
+
+  local errors=0
+  local warnings=0
+
+  if [ -f "$KILO_PLUGIN_DIR/dist/doc-it.js" ]; then
+    if head -3 "$KILO_PLUGIN_DIR/dist/doc-it.js" | grep -q "doc-it-managed: true"; then
+      msg "  \u2705 DocItPlugin (managed)"
+    else
+      warn "  \u26a0 DocItPlugin (user-modified)"
+      warnings=$((warnings + 1))
+    fi
+  else
+    err "  \u274c DocItPlugin missing"
+    errors=$((errors + 1))
+  fi
+
+  if [ -f "$KILO_PLUGIN_DIR/dist/index.js" ]; then
+    msg "  \u2705 Plugin index present"
+  else
+    err "  \u274c Plugin index missing"
+    errors=$((errors + 1))
+  fi
+
+  if grep -q "@opencode-tools/kilo-plugin" "$KILO_CONFIG_DIR/kilo.jsonc" 2>/dev/null; then
+    msg "  \u2705 Plugin registered in kilo.jsonc"
+  else
+    err "  \u274c Plugin not registered in kilo.jsonc"
+    errors=$((errors + 1))
+  fi
+
+  echo ""
+  if [ "$errors" -eq 0 ] && [ "$warnings" -eq 0 ]; then
+    msg "doc-it (Kilo): healthy"
+  elif [ "$errors" -eq 0 ]; then
+    warn "doc-it (Kilo): $warnings warning(s)"
+  else
+    err "doc-it (Kilo): $errors error(s), $warnings warning(s)"
+  fi
+  echo ""
+  return "$errors"
 }
 
 # ---------------------------------------------------------------------------
@@ -1286,37 +1549,64 @@ show_status_kilo() {
 # ---------------------------------------------------------------------------
 
 usage() {
-  echo "Usage: $0 <command> [<cli>] [<project-dir>]"
+  echo "Usage: $0 [--restore-seeds] <command> [<cli>] [<project-dir>]"
+  echo ""
+  echo "Global flags:"
+  echo "  --restore-seeds            Overwrite existing seed files during init"
   echo ""
   echo "Commands:"
-  echo "  install <cli>              Install doc-it tools (kilo|opencode)"
-  echo "  install <cli> <project>    Install + initialize project"
+  echo "  install <cli>              Install doc-it tools globally (kilo|opencode)"
+  echo "  init <cli> <project>       Initialize project docs structure"
   echo "  uninstall <cli>            Remove doc-it tools (kilo|opencode)"
   echo "  status [<cli>]             Show installed components (kilo|opencode|all)"
+  echo "  doctor [<cli>]             Read-only diagnostics (kilo|opencode|all)"
   echo ""
   echo "Examples:"
   echo "  $0 install kilo"
   echo "  $0 install opencode"
-  echo "  $0 install opencode ./my-project"
+  echo "  $0 init opencode ./my-project"
+  echo "  $0 --restore-seeds init opencode ./my-project"
   echo "  $0 uninstall kilo"
   echo "  $0 status"
-  echo "  $0 status opencode"
+  echo "  $0 doctor"
+  echo "  $0 doctor opencode"
   echo ""
   echo "Aliases: add = install, rm = uninstall"
 }
+
+RESTORE_SEEDS=
+if [ "${1:-}" = "--restore-seeds" ]; then
+  RESTORE_SEEDS=1
+  export RESTORE_SEEDS
+  shift
+  msg "--restore-seeds: Will overwrite existing seed files"
+fi
 
 case "${1:-help}" in
   install|add)
     case "${2:-}" in
       kilo)
         install_kilo_global
-        if [ -n "${3:-}" ]; then install_project kilo "$3"; fi
+        if [ -n "${3:-}" ]; then
+          warn "'install <cli> <project>' is deprecated. Use 'init <cli> <project>'"
+          init_project kilo "$3"
+        fi
         ;;
       opencode)
         install_opencode_global
-        if [ -n "${3:-}" ]; then install_project opencode "$3"; fi
+        if [ -n "${3:-}" ]; then
+          warn "'install <cli> <project>' is deprecated. Use 'init <cli> <project>'"
+          init_project opencode "$3"
+        fi
         ;;
-      *) err "Usage: $0 install <kilo|opencode> [project-dir]"; exit 1 ;;
+      *) err "Usage: $0 install <kilo|opencode>"; exit 1 ;;
+    esac
+    ;;
+  init)
+    case "${2:-}" in
+      kilo) init_project kilo "${3:-.}" ;;
+      opencode|none) init_project opencode "${3:-.}" ;;
+      *) err "Usage: $0 init <kilo|opencode> [project-dir]"; exit 1 ;;
     esac
     ;;
   uninstall|rm)
@@ -1334,8 +1624,22 @@ case "${1:-help}" in
       *) err "Usage: $0 status [kilo|opencode|all]"; exit 1 ;;
     esac
     ;;
+  doctor)
+    case "${2:-all}" in
+      kilo) doctor_kilo ;;
+      opencode) doctor_opencode ;;
+      all|"") doctor_kilo; doctor_opencode ;;
+      *) err "Usage: $0 doctor [kilo|opencode|all]"; exit 1 ;;
+    esac
+    ;;
   help|--help|-h)
     usage
+    ;;
+  upgrade)
+    msg "Upgrade not yet implemented. Re-run 'install' to refresh managed assets."
+    ;;
+  repair)
+    warn "repair not yet implemented. Use 'doctor' to check status."
     ;;
   *)
     err "Unknown command: $1"
