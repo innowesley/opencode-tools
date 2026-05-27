@@ -1303,10 +1303,16 @@ init_project() {
       mkdir -p "$dir/.opencode/plans" "$dir/.opencode/tools" \
         "$dir/.agents/plans/pending" "$dir/.agents/plans/completed"
       if [ -d "$OPCODE_CONFIG_DIR/tools" ]; then
-        for f in "$OPCODE_CONFIG_DIR/tools"/*.ts; do
+        for f in "$OPCODE_CONFIG_DIR/tools"/*.ts "$OPCODE_CONFIG_DIR/tools/doc-it-core.js"; do
           [ -f "$f" ] || continue
           safe_cp_tool "$f" "$dir/.opencode/tools/$(basename "$f")"
         done
+      fi
+      # Symlink @opencode-ai/plugin so module resolution works in project tools
+      if [ -d "$OPCODE_CONFIG_DIR/node_modules/@opencode-ai/plugin" ]; then
+        mkdir -p "$dir/.opencode/tools/node_modules/@opencode-ai"
+        ln -sfn "$OPCODE_CONFIG_DIR/node_modules/@opencode-ai/plugin" \
+          "$dir/.opencode/tools/node_modules/@opencode-ai/plugin"
       fi
       install_agents_md_opencode "$dir"
       ;;
