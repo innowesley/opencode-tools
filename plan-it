@@ -703,7 +703,7 @@ TOOLEOF
         process.exit(0);
       }
 
-      function stripJsonc(t){let out='',i=0,s=!1,c='';for(;i<t.length;i++){const ch=t[i];if(s){out+=ch;if(ch==='\\'){i++;out+=t[i];continue}if(ch===c)s=!1;continue}if(ch==='"'||ch==="'"){s=!0;c=ch;out+=ch;continue}if(ch==='/'&&t[i+1]==='/'){while(i<t.length&&t[i]!=='\n')i++;continue}if(ch==='/'&&t[i+1]==='*'){i+=2;while(i<t.length-1&&!(t[i]==='*'&&t[i+1]==='/'))i++;i+=2;continue}out+=ch}return out}
+      function stripJsonc(t){let out='',i=0,s=!1,c='';for(;i<t.length;i++){const ch=t[i];if(s){out+=ch;if(ch==='\\\\'){i++;out+=t[i];continue}if(ch===c)s=!1;continue}if(ch==='\"'||ch===\"'\"){s=!0;c=ch;out+=ch;continue}if(ch==='/'&&t[i+1]==='/'){while(i<t.length&&t[i]!=='\n')i++;continue}if(ch==='/'&&t[i+1]==='*'){i+=2;while(i<t.length-1&&!(t[i]==='*'&&t[i+1]==='/'))i++;i+=2;continue}out+=ch}return out}
       const noComments = stripJsonc(content);
       const config = JSON.parse(noComments);
       config.plugin = config.plugin || [];
