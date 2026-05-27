@@ -174,7 +174,7 @@ export default tool({
     status: tool.schema.enum(["drafts", "pending", "active", "completed"]).default("active").describe("drafts = .opencode/plans/, pending = .agents/plans/pending/, active = both, completed = archived"),
   },
   async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     const dirs = STATUS_DIRS[args.status]
     if (!dirs) {
       return JSON.stringify({ count: 0, plans: [], error: `Unknown status: ${args.status}` })
@@ -235,7 +235,7 @@ export default tool({
     planName: tool.schema.string().describe("Plan filename (without .md) to analyze for related plans"),
   },
   async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     const draftsDir = `${base}/.opencode/plans`
     const pendingDir = `${base}/.agents/plans/pending`
     const completedDir = `${base}/.agents/plans/completed`
@@ -378,7 +378,7 @@ export default tool({
     maxAgeDays: tool.schema.number().default(7).describe("Max age in days before stale"),
   },
   async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     const [draftsResult, pendingResult] = await Promise.all([
       checkDirStaleness(`${base}/.opencode/plans`, "drafts", args.maxAgeDays),
       checkDirStaleness(`${base}/.agents/plans/pending`, "pending", args.maxAgeDays),
@@ -621,7 +621,7 @@ export const PlanItPlugin = async (ctx) => {
           status: tool.schema.enum(["drafts", "pending", "active", "completed"]).default("active").describe("drafts = .kilo/plans/, pending = .agents/plans/pending/, active = both, completed = .agents/plans/completed/"),
         },
         async execute(args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           const dirs = STATUS_DIRS[args.status]
           if (!dirs) return JSON.stringify({ count: 0, plans: [], error: `Unknown status: ${args.status}` })
           const allPlans = await Promise.all(dirs.map(d => readPlans(base, d)))
@@ -635,7 +635,7 @@ export const PlanItPlugin = async (ctx) => {
           planName: tool.schema.string().describe("Plan filename (without .md) to analyze for related plans"),
         },
         async execute(args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           const draftsDir = `${base}/.kilo/plans`
           const pendingDir = `${base}/.agents/plans/pending`
           const completedDir = `${base}/.agents/plans/completed`
@@ -670,7 +670,7 @@ export const PlanItPlugin = async (ctx) => {
         description: "Check pending plans for staleness",
         args: { maxAgeDays: tool.schema.number().default(7).describe("Max age in days before stale") },
         async execute(args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           const [draftsResult, pendingResult] = await Promise.all([
             checkDirStaleness(`${base}/.kilo/plans`, "drafts", args.maxAgeDays),
             checkDirStaleness(`${base}/.agents/plans/pending`, "pending", args.maxAgeDays),
@@ -731,7 +731,7 @@ TOOLEOF
 ## Plan-First Protocol
 
 On ANY task:
-1. Create plan → `.kilo/plans/<task>.md` (use **descriptive names**)
+1. Create plan → `.kilo/plans/<task>.md` (MUST use lowercase-kebab-case descriptive names like `fix-auth-timeout` — NEVER use timestamps, UUIDs, or generic names like `task-1`)
 2. Use the `question` tool to gather input — do NOT skip
 3. Self-review: is this the safest, simplest approach for the goal?
 4. Before finalizing, analyze compatibility with existing logic:

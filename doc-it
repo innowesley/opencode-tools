@@ -738,7 +738,7 @@ export default tool({
   description: "Check for stale/missing documentation by scanning changed source files and cross-referencing with docs/",
   args: { changedFiles: tool.schema.string().optional().describe("Comma-separated list of changed files (auto-detected if not provided)") },
   async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     return await checkDocDrift(args, base)
   },
 })
@@ -759,7 +759,7 @@ export default tool({
     features: tool.schema.string().optional().describe("Feature names affected, comma-separated"),
   },
   async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     return await createChangelog(args, base)
   },
 })
@@ -775,7 +775,7 @@ export default tool({
   description: "Build a feature \u2192 files \u2192 routes \u2192 tables \u2192 tests \u2192 docs traceability map in docs/architecture/generated/traceability.md",
   args: {},
   async execute(_args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     return await buildTraceability(base)
   },
 })
@@ -791,7 +791,7 @@ export default tool({
   description: "Regenerate ai-context docs (current-system-state.md + project-summary.md) from the project docs tree",
   args: {},
   async execute(_args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     return await generateAiContext(base)
   },
 })
@@ -807,7 +807,7 @@ export default tool({
   description: "Detect rule violations: bypassed services, missing audits, direct DB writes, undocumented routes, stale contracts",
   args: { sourceDirs: tool.schema.string().default("src,app").describe("Comma-separated source directories to scan") },
   async execute(args, context) {
-    const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+    const base = context.directory
     return await checkRuleViolations(args.sourceDirs.split(",").map(s => s.trim()), base)
   },
 })
@@ -1170,7 +1170,7 @@ const DocItPlugin = async (ctx) => {
         description: "Check for stale/missing documentation by scanning changed source files and cross-referencing with docs/",
         args: { changedFiles: tool.schema.string().optional().describe("Comma-separated list of changed files (auto-detected if not provided)") },
         async execute(args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           return await checkDocDrift(args, base)
         },
       }),
@@ -1183,7 +1183,7 @@ const DocItPlugin = async (ctx) => {
           features: tool.schema.string().optional().describe("Feature names affected, comma-separated"),
         },
         async execute(args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           return await createChangelog(args, base)
         },
       }),
@@ -1191,7 +1191,7 @@ const DocItPlugin = async (ctx) => {
         description: "Build a feature \u2192 files \u2192 routes \u2192 tables \u2192 tests \u2192 docs traceability map in docs/architecture/generated/traceability.md",
         args: {},
         async execute(_args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           return await buildTraceability(base)
         },
       }),
@@ -1199,7 +1199,7 @@ const DocItPlugin = async (ctx) => {
         description: "Regenerate ai-context docs (current-system-state.md + project-summary.md) from the project docs tree",
         args: {},
         async execute(_args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           return await generateAiContext(base)
         },
       }),
@@ -1207,7 +1207,7 @@ const DocItPlugin = async (ctx) => {
         description: "Detect rule violations: bypassed services, missing audits, direct DB writes, undocumented routes, stale contracts",
         args: { sourceDirs: tool.schema.string().default("src,app").describe("Comma-separated source directories to scan") },
         async execute(args, context) {
-          const base = (context.worktree && context.worktree !== '/') ? context.worktree : context.directory
+          const base = context.directory
           return await checkRuleViolations(args.sourceDirs.split(",").map(s => s.trim()), base)
         },
       }),
